@@ -35,8 +35,8 @@ const GRAVITY_MAP: Record<string, string> = {
 // down proportionally along with everything else, rather than needing
 // to be positioned separately for each output size.
 export async function applyWatermarkToImage(
-  imageBuffer: Buffer,
-  watermarkBuffer: Buffer,
+  imageBuffer: Uint8Array,
+  watermarkBuffer: Uint8Array,
   settings: WatermarkSettings
 ): Promise<Buffer> {
   const image = sharp(imageBuffer);
