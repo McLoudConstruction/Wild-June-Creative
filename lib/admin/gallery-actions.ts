@@ -123,7 +123,7 @@ export async function uploadPhotosAction(formData: FormData) {
       // both the main and thumbnail sizes — so the watermark scales
       // proportionally with the image instead of needing separate
       // placement logic for each output size.
-      let sourceBuffer = originalBuffer;
+      let sourceBuffer: Uint8Array = originalBuffer;
       if (watermarkBuffer && watermarkSettings) {
         try {
           sourceBuffer = await applyWatermarkToImage(originalBuffer, watermarkBuffer, watermarkSettings);
