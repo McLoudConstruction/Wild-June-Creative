@@ -35,11 +35,23 @@ export async function sendInviteAction(formData: FormData) {
     redirect(`/admin?error=${encodeURIComponent('Missing client.')}`);
   }
 
+  // redirect() works by throwing internally, so it must never sit
+  // inside a try block whose catch would swallow that throw and
+  // mistake it for a real error — that's what produced the literal
+  // "NEXT_REDIRECT" text on screen. Capture the outcome here, then
+  // redirect once, fully outside the try/catch.
+  let email: string | undefined;
+  let errorMessage: string | undefined;
+
   try {
-    const email = await sendClientInvite(clientId);
-    redirect(`/admin?success=invited&email=${encodeURIComponent(email)}`);
+    email = await sendClientInvite(clientId);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    redirect(`/admin?error=${encodeURIComponent(message)}`);
+    errorMessage = err instanceof Error ? err.message : 'Unknown error';
   }
+
+  if (errorMessage) {
+    redirect(`/admin?error=${encodeURIComponent(errorMessage)}`);
+  }
+
+  redirect(`/admin?success=invited&email=${encodeURIComponent(email!)}`);
 }
