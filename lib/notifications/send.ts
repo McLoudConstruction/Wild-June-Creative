@@ -1,7 +1,15 @@
 import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Created lazily, inside the function that uses it, rather than at
+// module load time. Instantiating Resend with a missing/empty API key
+// throws immediately — if that happened at module scope, importing
+// this file at all (including during Vercel's build-time page data
+// collection, before any env vars are relevant) would crash the
+// build. This keeps the failure contained to actual send attempts.
+function getResendClient() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 export type NotificationType =
   | 'booking_confirmation'
@@ -48,6 +56,7 @@ export async function sendNotification(input: SendNotificationInput) {
 
   try {
     const { subject, html } = renderEmail(input);
+    const resend = getResendClient();
 
     await resend.emails.send({
       from: process.env.NOTIFICATIONS_FROM_EMAIL!,

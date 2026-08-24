@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/notifications/send';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export const dynamic = 'force-dynamic';
 
 // Runs once daily (schedule via Vercel Cron in vercel.json).
 // Enforces: 3-day grace period after an installment's due date, then
@@ -15,6 +15,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Created here, not at module scope — same reasoning as the Resend
+  // client in lib/notifications/send.ts: instantiating with a missing
+  // key throws immediately, which would crash the build if it happened
+  // at import time.
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '');
   const supabase = createAdminClient();
   const today = new Date().toISOString().split('T')[0];
 
