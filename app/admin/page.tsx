@@ -114,7 +114,7 @@ export default async function AdminDashboard({
               <th style={{ padding: 8 }}>Name</th>
               <th style={{ padding: 8 }}>Email</th>
               <th style={{ padding: 8 }}>Status</th>
-              <th style={{ padding: 8 }} colSpan={3} />
+              <th style={{ padding: 8 }} colSpan={4} />
             </tr>
           </thead>
           <tbody>
@@ -138,6 +138,14 @@ export default async function AdminDashboard({
                   <td style={{ padding: 8 }}>
                     <Link href={`/admin/clients/${client.id}/edit`} style={{ padding: '6px 12px' }}>
                       Edit
+                    </Link>
+                  </td>
+                  <td style={{ padding: 8 }}>
+                    <Link
+                      href={`/admin/clients/${client.id}/gallery`}
+                      style={{ padding: '6px 12px' }}
+                    >
+                      Gallery
                     </Link>
                   </td>
                   <td style={{ padding: 8 }}>
