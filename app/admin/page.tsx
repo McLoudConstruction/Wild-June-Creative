@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendInviteAction } from '@/lib/admin/actions';
+import { DeleteClientButton } from '@/components/DeleteClientButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ type ClientRow = {
   status: ClientStatus;
 };
 
-async function getClientsWithStatus(): Promise<{ clients: ClientRow[]; debugInfo: string }> {
+async function getClientsWithStatus(): Promise<ClientRow[]> {
   // force-dynamic on its own only guarantees the *page* isn't
   // statically cached — it doesn't necessarily stop underlying data
   // calls made by third-party clients like Supabase's SDK from being
@@ -28,20 +29,16 @@ async function getClientsWithStatus(): Promise<{ clients: ClientRow[]; debugInfo
 
   const supabase = createAdminClient();
 
-  const { data: clients, error, count } = await supabase
+  const { data: clients, error } = await supabase
     .from('clients')
-    .select('*', { count: 'exact' })
+    .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) {
-    return { clients: [], debugInfo: `Query error: ${error.message}` };
+  if (error || !clients) {
+    return [];
   }
 
-  if (!clients) {
-    return { clients: [], debugInfo: 'Query returned null with no error.' };
-  }
-
-  const withStatus = await Promise.all(
+  return Promise.all(
     clients.map(async (client): Promise<ClientRow> => {
       let status: ClientStatus = 'not_invited';
 
@@ -60,11 +57,6 @@ async function getClientsWithStatus(): Promise<{ clients: ClientRow[]; debugInfo
       return { ...client, status };
     })
   );
-
-  return {
-    clients: withStatus,
-    debugInfo: `Query returned ${clients.length} row(s), reported count: ${count}.`,
-  };
 }
 
 const statusStyles: Record<ClientStatus, { label: string; color: string }> = {
@@ -78,11 +70,10 @@ export default async function AdminDashboard({
 }: {
   searchParams: { success?: string; error?: string; email?: string };
 }) {
-  const { clients, debugInfo } = await getClientsWithStatus();
+  const clients = await getClientsWithStatus();
 
   return (
-    <div style={{ maxWidth: 900, margin: '60px auto', padding: '0 16px' }}>
-      <p style={{ fontSize: 12, color: '#aaa', fontFamily: 'monospace' }}>{debugInfo}</p>
+    <div style={{ maxWidth: 1000, margin: '60px auto', padding: '0 16px' }}>
       <div
         style={{
           display: 'flex',
@@ -106,6 +97,12 @@ export default async function AdminDashboard({
       {searchParams.success === 'invited' && (
         <p style={{ color: 'green' }}>Invite sent to {searchParams.email}.</p>
       )}
+      {searchParams.success === 'updated' && (
+        <p style={{ color: 'green' }}>Client updated.</p>
+      )}
+      {searchParams.success === 'deleted' && (
+        <p style={{ color: 'green' }}>Client deleted.</p>
+      )}
       {searchParams.error && <p style={{ color: 'crimson' }}>{decodeURIComponent(searchParams.error)}</p>}
 
       {clients.length === 0 ? (
@@ -117,7 +114,7 @@ export default async function AdminDashboard({
               <th style={{ padding: 8 }}>Name</th>
               <th style={{ padding: 8 }}>Email</th>
               <th style={{ padding: 8 }}>Status</th>
-              <th style={{ padding: 8 }} />
+              <th style={{ padding: 8 }} colSpan={3} />
             </tr>
           </thead>
           <tbody>
@@ -137,6 +134,14 @@ export default async function AdminDashboard({
                         </button>
                       </form>
                     )}
+                  </td>
+                  <td style={{ padding: 8 }}>
+                    <Link href={`/admin/clients/${client.id}/edit`} style={{ padding: '6px 12px' }}>
+                      Edit
+                    </Link>
+                  </td>
+                  <td style={{ padding: 8 }}>
+                    <DeleteClientButton clientId={client.id} />
                   </td>
                 </tr>
               );
