@@ -103,7 +103,7 @@ export async function POST(request: Request) {
         // wait for someone to notice and invite them manually.
         if (!client.auth_user_id) {
           try {
-            await sendClientInvite(client.id, client.email);
+            await sendClientInvite(client.id);
           } catch {
             // Booking still succeeded either way — the invite can
             // always be sent manually from the admin dashboard if
