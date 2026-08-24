@@ -44,12 +44,40 @@ export async function sendClientInvite(clientId: string): Promise<string> {
     });
 
     if (createError || !created.user) {
-      throw new Error(
-        `Failed to create login for client: ${createError?.message ?? 'unknown error'}`
-      );
-    }
+      // Deleting a row from the clients table doesn't delete the
+      // underlying Supabase Auth login — the two aren't linked by a
+      // cascade. If a client was deleted and re-added with the same
+      // email, createUser correctly reports the email as already
+      // registered. Rather than treating that as a hard failure, find
+      // the existing login and reuse it instead — this is the normal
+      // path for re-adding a client, not an error case.
+      const alreadyExists = /already.*registered/i.test(createError?.message ?? '');
 
-    authUserId = created.user.id;
+      if (alreadyExists) {
+        const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers({
+          page: 1,
+          perPage: 1000,
+        });
+
+        const match = existingUsers?.users.find(
+          (u) => u.email?.toLowerCase() === client.email.toLowerCase()
+        );
+
+        if (listError || !match) {
+          throw new Error(
+            `Email is already registered to a login, but couldn't find/reuse it: ${listError?.message ?? 'no matching user found'}. You may need to delete the orphaned login manually in Supabase Authentication → Users.`
+          );
+        }
+
+        authUserId = match.id;
+      } else {
+        throw new Error(
+          `Failed to create login for client: ${createError?.message ?? 'unknown error'}`
+        );
+      }
+    } else {
+      authUserId = created.user.id;
+    }
 
     const { error: linkError } = await supabase
       .from('clients')
@@ -65,7 +93,14 @@ export async function sendClientInvite(clientId: string): Promise<string> {
     type: 'invite',
     email: client.email,
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/portal/set-password`,
+      // Straight to the client page, not through /auth/callback.
+      // Supabase is issuing this as an implicit-flow link — the
+      // session tokens come back as a URL fragment (#access_token=…),
+      // which only ever exists in the browser and is never sent to a
+      // server. A server-side route handler can't do anything with
+      // that, so the page that actually receives the fragment has to
+      // be the one that reads it.
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/portal/set-password`,
     },
   });
 
