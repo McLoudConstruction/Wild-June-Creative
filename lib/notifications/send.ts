@@ -58,12 +58,16 @@ export async function sendNotification(input: SendNotificationInput) {
     const { subject, html } = renderEmail(input);
     const resend = getResendClient();
 
-    await resend.emails.send({
+    const { error: sendError } = await resend.emails.send({
       from: process.env.NOTIFICATIONS_FROM_EMAIL!,
       to: input.clientEmail,
       subject,
       html,
     });
+
+    if (sendError) {
+      throw new Error(sendError.message);
+    }
 
     if (logRow) {
       await supabase

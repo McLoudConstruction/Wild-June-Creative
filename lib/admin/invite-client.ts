@@ -77,12 +77,20 @@ export async function sendClientInvite(clientId: string): Promise<string> {
   }
 
   const resend = getResendClient();
-  await resend.emails.send({
+  const { error: sendError } = await resend.emails.send({
     from: process.env.NOTIFICATIONS_FROM_EMAIL ?? 'bookings@wildjunecreative.com',
     to: client.email,
     subject: 'Your Wild June Creative client portal',
     html: `<p>Hi ${client.full_name},</p><p>Click below to set up your account and view your gallery:</p><p><a href="${linkData.properties.action_link}">Set up my account</a></p>`,
   });
+
+  // Resend's SDK returns errors as data rather than throwing — a
+  // failed send (wrong/unverified sender domain, bad API key, etc.)
+  // would otherwise sail through silently and get reported as
+  // success. Surface it properly instead.
+  if (sendError) {
+    throw new Error(`Email failed to send: ${sendError.message}`);
+  }
 
   await supabase
     .from('clients')
