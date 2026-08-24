@@ -3,13 +3,15 @@ import { notFound } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getWatermarkSettings } from '@/lib/admin/watermark';
-import {
-  createGalleryAction,
-  uploadPhotosAction,
-  deletePhotoAction,
-} from '@/lib/admin/gallery-actions';
+import { createGalleryAction, deletePhotoAction } from '@/lib/admin/gallery-actions';
+import { GalleryUploader } from '@/components/GalleryUploader';
 
 export const dynamic = 'force-dynamic';
+// Gives the per-photo processing action (compress + watermark +
+// thumbnail) real headroom — a large original can take a few seconds
+// through sharp, and this page is where that action gets invoked
+// from.
+export const maxDuration = 60;
 
 export default async function ClientGalleryPage({
   params,
@@ -124,31 +126,7 @@ export default async function ClientGalleryPage({
             {gallery.expires_at ? new Date(gallery.expires_at).toLocaleDateString() : 'never'}
           </p>
 
-          <form action={uploadPhotosAction} style={{ margin: '16px 0' }}>
-            <input type="hidden" name="galleryId" value={gallery.id} />
-            <input type="hidden" name="clientId" value={client.id} />
-            <input type="file" name="photos" accept="image/*" multiple required />
-            <div style={{ marginTop: 8 }}>
-              <label>
-                <input
-                  type="checkbox"
-                  name="applyWatermark"
-                  defaultChecked={watermarkConfigured}
-                  disabled={!watermarkConfigured}
-                />{' '}
-                Apply watermark to these photos
-                {!watermarkConfigured && (
-                  <span style={{ color: '#888' }}>
-                    {' '}
-                    — <Link href="/admin/settings/watermark">set one up first</Link>
-                  </span>
-                )}
-              </label>
-            </div>
-            <button type="submit" style={{ padding: '8px 16px', marginTop: 8 }}>
-              Upload photos
-            </button>
-          </form>
+          <GalleryUploader galleryId={gallery.id} watermarkConfigured={watermarkConfigured} />
 
           {photosWithUrls.length === 0 ? (
             <p style={{ color: '#888' }}>No photos uploaded yet.</p>
