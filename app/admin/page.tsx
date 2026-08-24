@@ -83,12 +83,17 @@ export default async function AdminDashboard({
         }}
       >
         <h1>Clients</h1>
-        <Link
-          href="/admin/clients/new"
-          style={{ padding: '8px 16px', border: '1px solid #333', borderRadius: 4 }}
-        >
-          + Add client
-        </Link>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <Link href="/admin/settings/watermark" style={{ fontSize: 14 }}>
+            Watermark settings
+          </Link>
+          <Link
+            href="/admin/clients/new"
+            style={{ padding: '8px 16px', border: '1px solid #333', borderRadius: 4 }}
+          >
+            + Add client
+          </Link>
+        </div>
       </div>
 
       {searchParams.success === 'created' && (

@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import sharp from 'sharp';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getWatermarkSettings, applyWatermarkToImage } from '@/lib/admin/watermark';
 
 // Every upload gets resized down and re-encoded before it ever
 // touches storage — a DSLR or modern phone photo straight off the
@@ -58,6 +59,7 @@ export async function uploadPhotosAction(formData: FormData) {
   const galleryId = formData.get('galleryId') as string;
   const clientId = formData.get('clientId') as string;
   const files = formData.getAll('photos') as File[];
+  const shouldWatermark = formData.get('applyWatermark') === 'on';
 
   if (!galleryId) {
     redirect(`/admin?error=${encodeURIComponent('Missing gallery.')}`);
@@ -72,6 +74,34 @@ export async function uploadPhotosAction(formData: FormData) {
   const supabase = createAdminClient();
   const errors: string[] = [];
 
+  // Fetched once per batch, not once per file — the watermark image
+  // itself doesn't change between photos in the same upload, no need
+  // to re-fetch settings and re-download it from storage each time.
+  let watermarkBuffer: Buffer | null = null;
+  let watermarkSettings: Awaited<ReturnType<typeof getWatermarkSettings>> = null;
+
+  if (shouldWatermark) {
+    watermarkSettings = await getWatermarkSettings();
+
+    if (watermarkSettings?.storage_path) {
+      const { data: watermarkFile, error: watermarkFetchError } = await supabase.storage
+        .from('galleries')
+        .download(watermarkSettings.storage_path);
+
+      if (watermarkFetchError || !watermarkFile) {
+        errors.push(
+          `Watermark was requested but the configured watermark image couldn't be loaded — uploading without it.`
+        );
+      } else {
+        watermarkBuffer = Buffer.from(await watermarkFile.arrayBuffer());
+      }
+    } else {
+      errors.push(
+        `Watermark was requested but none is configured yet — uploading without it. Set one up in Watermark Settings.`
+      );
+    }
+  }
+
   // Sequential rather than parallel — plenty fast at the "a few dozen
   // photos per upload" scale this is built for, and keeps error
   // handling per-file simple. sharp is also memory-hungry per image,
@@ -83,11 +113,31 @@ export async function uploadPhotosAction(formData: FormData) {
 
     let mainBuffer: Buffer;
     let thumbnailBuffer: Buffer;
+    let watermarkApplied = false;
 
     try {
       const originalBuffer = Buffer.from(await file.arrayBuffer());
 
-      mainBuffer = await sharp(originalBuffer)
+      // Watermark gets composited onto the full-resolution original
+      // first, then that watermarked version gets resized down into
+      // both the main and thumbnail sizes — so the watermark scales
+      // proportionally with the image instead of needing separate
+      // placement logic for each output size.
+      let sourceBuffer = originalBuffer;
+      if (watermarkBuffer && watermarkSettings) {
+        try {
+          sourceBuffer = await applyWatermarkToImage(originalBuffer, watermarkBuffer, watermarkSettings);
+          watermarkApplied = true;
+        } catch (watermarkErr) {
+          errors.push(
+            `${file.name}: watermark failed to apply (${
+              watermarkErr instanceof Error ? watermarkErr.message : 'unknown error'
+            }) — uploaded without it.`
+          );
+        }
+      }
+
+      mainBuffer = await sharp(sourceBuffer)
         .rotate() // applies EXIF orientation so photos don't end up sideways
         .resize({
           width: MAIN_MAX_DIMENSION,
@@ -98,7 +148,7 @@ export async function uploadPhotosAction(formData: FormData) {
         .jpeg({ quality: MAIN_QUALITY })
         .toBuffer();
 
-      thumbnailBuffer = await sharp(originalBuffer)
+      thumbnailBuffer = await sharp(sourceBuffer)
         .rotate()
         .resize({
           width: THUMBNAIL_MAX_DIMENSION,
@@ -146,6 +196,7 @@ export async function uploadPhotosAction(formData: FormData) {
       thumbnail_path: thumbUploadError ? null : thumbnailPath,
       file_name: file.name,
       sort_order: i,
+      is_watermarked: watermarkApplied,
     });
 
     if (insertError) {

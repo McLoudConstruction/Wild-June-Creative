@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getWatermarkSettings } from '@/lib/admin/watermark';
 import {
   createGalleryAction,
   uploadPhotosAction,
@@ -28,6 +30,9 @@ export default async function ClientGalleryPage({
   if (!client) {
     notFound();
   }
+
+  const watermarkSettings = await getWatermarkSettings();
+  const watermarkConfigured = Boolean(watermarkSettings?.storage_path);
 
   // One client can technically have more than one gallery over time,
   // but for now we work with their most recent one — multi-gallery
@@ -123,7 +128,24 @@ export default async function ClientGalleryPage({
             <input type="hidden" name="galleryId" value={gallery.id} />
             <input type="hidden" name="clientId" value={client.id} />
             <input type="file" name="photos" accept="image/*" multiple required />
-            <button type="submit" style={{ padding: '8px 16px', marginLeft: 8 }}>
+            <div style={{ marginTop: 8 }}>
+              <label>
+                <input
+                  type="checkbox"
+                  name="applyWatermark"
+                  defaultChecked={watermarkConfigured}
+                  disabled={!watermarkConfigured}
+                />{' '}
+                Apply watermark to these photos
+                {!watermarkConfigured && (
+                  <span style={{ color: '#888' }}>
+                    {' '}
+                    — <Link href="/admin/settings/watermark">set one up first</Link>
+                  </span>
+                )}
+              </label>
+            </div>
+            <button type="submit" style={{ padding: '8px 16px', marginTop: 8 }}>
               Upload photos
             </button>
           </form>
@@ -148,6 +170,22 @@ export default async function ClientGalleryPage({
                       alt={photo.file_name}
                       style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4 }}
                     />
+                  )}
+                  {photo.is_watermarked && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 4,
+                        left: 4,
+                        background: 'rgba(0,0,0,0.6)',
+                        color: 'white',
+                        fontSize: 10,
+                        padding: '2px 6px',
+                        borderRadius: 3,
+                      }}
+                    >
+                      Watermarked
+                    </span>
                   )}
                   <form action={deletePhotoAction} style={{ marginTop: 4 }}>
                     <input type="hidden" name="photoId" value={photo.id} />
