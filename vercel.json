@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/check-installments",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/check-gallery-expiration",
+      "schedule": "0 13 * * *"
+    }
+  ]
+}
