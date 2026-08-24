@@ -84,6 +84,9 @@ export default async function AdminDashboard({
       >
         <h1>Clients</h1>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <Link href="/admin/settings/packages" style={{ fontSize: 14 }}>
+            Packages
+          </Link>
           <Link href="/admin/settings/watermark" style={{ fontSize: 14 }}>
             Watermark settings
           </Link>
