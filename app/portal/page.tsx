@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { unstable_noStore as noStore } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
 // This page depends entirely on the logged-in user's session — it
@@ -11,6 +12,7 @@ export const dynamic = 'force-dynamic';
 // password → login → portal flow works before building the gallery UI
 // on top of it.
 export default async function PortalPage() {
+  noStore();
   const supabase = await createClient();
   const {
     data: { user },

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendInviteAction } from '@/lib/admin/actions';
 
@@ -16,34 +17,54 @@ type ClientRow = {
   status: ClientStatus;
 };
 
-async function getClientsWithStatus(): Promise<ClientRow[]> {
+async function getClientsWithStatus(): Promise<{ clients: ClientRow[]; debugInfo: string }> {
+  // force-dynamic on its own only guarantees the *page* isn't
+  // statically cached — it doesn't necessarily stop underlying data
+  // calls made by third-party clients like Supabase's SDK from being
+  // cached separately. noStore() is the explicit, documented way to
+  // opt a non-fetch() data source like this one out of caching
+  // entirely.
+  noStore();
+
   const supabase = createAdminClient();
 
-  const { data: clients, error } = await supabase
+  const { data: clients, error, count } = await supabase
     .from('clients')
-    .select('*')
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false });
 
-  if (error || !clients) {
-    return [];
+  if (error) {
+    return { clients: [], debugInfo: `Query error: ${error.message}` };
   }
 
-  // One extra lookup per invited client to check whether they've
-  // actually confirmed (set a password) yet or are still pending.
-  // Fine at the "dozens of clients" scale this is built for — would
-  // be worth batching if that ever changes.
-  return Promise.all(
+  if (!clients) {
+    return { clients: [], debugInfo: 'Query returned null with no error.' };
+  }
+
+  const withStatus = await Promise.all(
     clients.map(async (client): Promise<ClientRow> => {
       let status: ClientStatus = 'not_invited';
 
       if (client.auth_user_id) {
-        const { data } = await supabase.auth.admin.getUserById(client.auth_user_id);
-        status = data?.user?.email_confirmed_at ? 'active' : 'pending';
+        try {
+          const { data } = await supabase.auth.admin.getUserById(client.auth_user_id);
+          status = data?.user?.email_confirmed_at ? 'active' : 'pending';
+        } catch {
+          // Don't let one client's auth lookup failure take down the
+          // whole list — fall back to "not_invited" display rather
+          // than crashing the page.
+          status = 'not_invited';
+        }
       }
 
       return { ...client, status };
     })
   );
+
+  return {
+    clients: withStatus,
+    debugInfo: `Query returned ${clients.length} row(s), reported count: ${count}.`,
+  };
 }
 
 const statusStyles: Record<ClientStatus, { label: string; color: string }> = {
@@ -57,10 +78,11 @@ export default async function AdminDashboard({
 }: {
   searchParams: { success?: string; error?: string; email?: string };
 }) {
-  const clients = await getClientsWithStatus();
+  const { clients, debugInfo } = await getClientsWithStatus();
 
   return (
     <div style={{ maxWidth: 900, margin: '60px auto', padding: '0 16px' }}>
+      <p style={{ fontSize: 12, color: '#aaa', fontFamily: 'monospace' }}>{debugInfo}</p>
       <div
         style={{
           display: 'flex',
