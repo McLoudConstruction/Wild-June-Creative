@@ -4,13 +4,18 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
+// Prevents this page from being statically prerendered at build time.
+// It's a login form — there's nothing to prerender anyway, and static
+// generation was triggering Supabase client validation before real
+// env vars were relevant.
+export const dynamic = 'force-dynamic';
+
 // Every return visit after the one-time invite goes through here.
 // Clients never self-register — accounts only get created via the
 // admin invite flow — so this page is purely a login form, no sign-up
 // link.
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +26,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
+    const supabase = createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
     setLoading(false);

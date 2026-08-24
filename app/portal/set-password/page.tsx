@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
+export const dynamic = 'force-dynamic';
+
 // Landing page after a client clicks their one-time invite link.
 // They're already authenticated at this point (the magic link created
 // a session) — this just captures the password they want to use for
@@ -11,7 +13,6 @@ import { createClient } from '@/lib/supabase/client';
 // the normal email+password form at /login.
 export default function SetPasswordPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +32,7 @@ export default function SetPasswordPage() {
     }
 
     setLoading(true);
+    const supabase = createClient();
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setLoading(false);
 

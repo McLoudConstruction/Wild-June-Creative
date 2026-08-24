@@ -1,6 +1,10 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
+// This page depends entirely on the logged-in user's session — it
+// can never be meaningfully prerendered as static HTML, so don't try.
+export const dynamic = 'force-dynamic';
+
 // Placeholder — this is where gallery viewing gets built next. For
 // now it just confirms the client is authenticated and shows who
 // they're logged in as, so we can verify the whole invite → set

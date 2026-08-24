@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/notifications/send';
 
+export const dynamic = 'force-dynamic';
+
 // Runs once daily. Two jobs:
 // 1. Send a "7 days left" warning (once) for galleries about to expire
 // 2. Flip is_expired=true for galleries past their expires_at — the
