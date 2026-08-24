@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -20,6 +20,37 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checkingForInvite, setCheckingForInvite] = useState(true);
+
+  useEffect(() => {
+    // Browsers carry an unclaimed URL fragment forward through
+    // same-origin redirects. If an invite link's tokens end up here
+    // instead of landing cleanly on /portal/set-password (a stale
+    // link, an unexpected redirect hop, whatever the cause), rescue
+    // it here rather than showing a confusing login form to someone
+    // who doesn't have a password yet.
+    const hash = window.location.hash;
+
+    if (hash && hash.includes('access_token') && hash.includes('type=invite')) {
+      const params = new URLSearchParams(hash.substring(1));
+      const access_token = params.get('access_token');
+      const refresh_token = params.get('refresh_token');
+
+      if (access_token && refresh_token) {
+        const supabase = createClient();
+        supabase.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
+          if (!error) {
+            router.replace('/portal/set-password');
+            return;
+          }
+          setCheckingForInvite(false);
+        });
+        return;
+      }
+    }
+
+    setCheckingForInvite(false);
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,6 +68,14 @@ export default function LoginPage() {
     }
 
     router.push('/portal');
+  }
+
+  if (checkingForInvite) {
+    return (
+      <div style={{ maxWidth: 400, margin: '80px auto', padding: '0 16px' }}>
+        <p>Checking your link…</p>
+      </div>
+    );
   }
 
   return (

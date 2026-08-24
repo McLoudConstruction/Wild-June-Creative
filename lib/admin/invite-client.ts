@@ -93,7 +93,14 @@ export async function sendClientInvite(clientId: string): Promise<string> {
     type: 'invite',
     email: client.email,
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/portal/set-password`,
+      // Straight to the client page, not through /auth/callback.
+      // Supabase is issuing this as an implicit-flow link — the
+      // session tokens come back as a URL fragment (#access_token=…),
+      // which only ever exists in the browser and is never sent to a
+      // server. A server-side route handler can't do anything with
+      // that, so the page that actually receives the fragment has to
+      // be the one that reads it.
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/portal/set-password`,
     },
   });
 
