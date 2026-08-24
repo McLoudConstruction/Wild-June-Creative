@@ -1,7 +1,24 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import sharp from 'sharp';
 import { createAdminClient } from '@/lib/supabase/admin';
+
+// Every upload gets resized down and re-encoded before it ever
+// touches storage — a DSLR or modern phone photo straight off the
+// camera can be 15-40MB+; nothing about viewing it in a browser
+// benefits from storing (or downloading) that much data.
+//
+// MAIN: a good display/download quality version — plenty for viewing
+// full-screen or a client saving it, without being camera-original
+// size.
+// THUMBNAIL: a small, fast-loading version specifically for grid
+// views, so browsing a gallery of 100+ photos doesn't mean pulling
+// down 100+ multi-megabyte files just to show little squares.
+const MAIN_MAX_DIMENSION = 2400;
+const MAIN_QUALITY = 85;
+const THUMBNAIL_MAX_DIMENSION = 500;
+const THUMBNAIL_QUALITY = 80;
 
 // Creates a gallery for a client with an expiration date computed
 // from the number of days chosen in the form. is_expired starts
@@ -57,24 +74,76 @@ export async function uploadPhotosAction(formData: FormData) {
 
   // Sequential rather than parallel — plenty fast at the "a few dozen
   // photos per upload" scale this is built for, and keeps error
-  // handling per-file simple.
+  // handling per-file simple. sharp is also memory-hungry per image,
+  // so sequential processing avoids spiking memory on a large batch.
   for (let i = 0; i < validFiles.length; i++) {
     const file = validFiles[i];
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `${galleryId}/${Date.now()}-${i}-${safeName}`;
+    const safeBaseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const pathPrefix = `${galleryId}/${Date.now()}-${i}-${safeBaseName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('galleries')
-      .upload(storagePath, file, { contentType: file.type });
+    let mainBuffer: Buffer;
+    let thumbnailBuffer: Buffer;
 
-    if (uploadError) {
-      errors.push(`${file.name}: ${uploadError.message}`);
+    try {
+      const originalBuffer = Buffer.from(await file.arrayBuffer());
+
+      mainBuffer = await sharp(originalBuffer)
+        .rotate() // applies EXIF orientation so photos don't end up sideways
+        .resize({
+          width: MAIN_MAX_DIMENSION,
+          height: MAIN_MAX_DIMENSION,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality: MAIN_QUALITY })
+        .toBuffer();
+
+      thumbnailBuffer = await sharp(originalBuffer)
+        .rotate()
+        .resize({
+          width: THUMBNAIL_MAX_DIMENSION,
+          height: THUMBNAIL_MAX_DIMENSION,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality: THUMBNAIL_QUALITY })
+        .toBuffer();
+    } catch (err) {
+      errors.push(
+        `${file.name}: couldn't process this image (${
+          err instanceof Error ? err.message : 'unknown error'
+        }). Skipped.`
+      );
       continue;
+    }
+
+    const mainPath = `${pathPrefix}.jpg`;
+    const thumbnailPath = `${pathPrefix}-thumb.jpg`;
+
+    const { error: mainUploadError } = await supabase.storage
+      .from('galleries')
+      .upload(mainPath, mainBuffer, { contentType: 'image/jpeg' });
+
+    if (mainUploadError) {
+      errors.push(`${file.name}: ${mainUploadError.message}`);
+      continue;
+    }
+
+    const { error: thumbUploadError } = await supabase.storage
+      .from('galleries')
+      .upload(thumbnailPath, thumbnailBuffer, { contentType: 'image/jpeg' });
+
+    if (thumbUploadError) {
+      // Main image made it, thumbnail didn't — not worth failing the
+      // whole upload over, the gallery UI falls back to the main
+      // image if thumbnail_path is null.
+      errors.push(`${file.name}: uploaded, but thumbnail failed (${thumbUploadError.message}).`);
     }
 
     const { error: insertError } = await supabase.from('photos').insert({
       gallery_id: galleryId,
-      storage_path: storagePath,
+      storage_path: mainPath,
+      thumbnail_path: thumbUploadError ? null : thumbnailPath,
       file_name: file.name,
       sort_order: i,
     });
@@ -102,12 +171,14 @@ export async function uploadPhotosAction(formData: FormData) {
 export async function deletePhotoAction(formData: FormData) {
   const photoId = formData.get('photoId') as string;
   const storagePath = formData.get('storagePath') as string;
+  const thumbnailPath = formData.get('thumbnailPath') as string | null;
   const clientId = formData.get('clientId') as string;
 
   const supabase = createAdminClient();
 
-  if (storagePath) {
-    await supabase.storage.from('galleries').remove([storagePath]);
+  const pathsToRemove = [storagePath, thumbnailPath].filter(Boolean) as string[];
+  if (pathsToRemove.length > 0) {
+    await supabase.storage.from('galleries').remove(pathsToRemove);
   }
 
   const { error } = await supabase.from('photos').delete().eq('id', photoId);

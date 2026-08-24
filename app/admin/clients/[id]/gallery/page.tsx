@@ -51,11 +51,14 @@ export default async function ClientGalleryPage({
 
   // Signed URLs so the (private) storage bucket's images can actually
   // render here — 1 hour is plenty for an admin reviewing an upload.
+  // The grid uses the small thumbnail specifically, not the full
+  // compressed image, so scanning a big upload stays fast.
   const photosWithUrls = await Promise.all(
     (photos ?? []).map(async (photo) => {
+      const pathForGrid = photo.thumbnail_path ?? photo.storage_path;
       const { data: signed } = await supabase.storage
         .from('galleries')
-        .createSignedUrl(photo.storage_path, 3600);
+        .createSignedUrl(pathForGrid, 3600);
       return { ...photo, url: signed?.signedUrl ?? null };
     })
   );
@@ -149,6 +152,7 @@ export default async function ClientGalleryPage({
                   <form action={deletePhotoAction} style={{ marginTop: 4 }}>
                     <input type="hidden" name="photoId" value={photo.id} />
                     <input type="hidden" name="storagePath" value={photo.storage_path} />
+                    <input type="hidden" name="thumbnailPath" value={photo.thumbnail_path ?? ''} />
                     <input type="hidden" name="clientId" value={client.id} />
                     <button
                       type="submit"

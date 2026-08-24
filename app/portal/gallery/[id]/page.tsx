@@ -56,10 +56,22 @@ export default async function GalleryPage({ params }: { params: { id: string } }
 
   const photosWithUrls = await Promise.all(
     (photos ?? []).map(async (photo) => {
-      const { data: signed } = await supabase.storage
+      const { data: fullSigned } = await supabase.storage
         .from('galleries')
         .createSignedUrl(photo.storage_path, 3600);
-      return { ...photo, url: signed?.signedUrl ?? null };
+
+      const { data: thumbSigned } = photo.thumbnail_path
+        ? await supabase.storage.from('galleries').createSignedUrl(photo.thumbnail_path, 3600)
+        : { data: null };
+
+      return {
+        ...photo,
+        fullUrl: fullSigned?.signedUrl ?? null,
+        // Grid always has something to show even if the thumbnail is
+        // missing for some reason (e.g. it failed to generate at
+        // upload time) — just falls back to the full image.
+        gridUrl: thumbSigned?.signedUrl ?? fullSigned?.signedUrl ?? null,
+      };
     })
   );
 
@@ -87,12 +99,12 @@ export default async function GalleryPage({ params }: { params: { id: string } }
           }}
         >
           {photosWithUrls.map((photo) =>
-            photo.url ? (
+            photo.gridUrl ? (
               <div key={photo.id} style={{ position: 'relative' }}>
-                <a href={photo.url} target="_blank" rel="noopener noreferrer">
+                <a href={photo.fullUrl ?? photo.gridUrl} target="_blank" rel="noopener noreferrer">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={photo.url}
+                    src={photo.gridUrl}
                     alt={photo.file_name}
                     loading="lazy"
                     style={{
