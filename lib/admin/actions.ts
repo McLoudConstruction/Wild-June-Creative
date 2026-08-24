@@ -2,16 +2,12 @@
 
 import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { inviteClient } from '@/lib/admin/invite-client';
+import { sendClientInvite } from '@/lib/admin/invite-client';
 
-// Called from the admin "new client" form. Creates the client row
-// first, then sends their one-time invite. If the invite step fails
-// after the client record was already created, we don't roll back —
-// the client exists, it just needs a fresh invite sent (re-running
-// this form with the same email will fail on the unique constraint,
-// so a resend path will need its own button eventually; for now,
-// delete-and-recreate or invite manually via Supabase dashboard).
-export async function createAndInviteClient(formData: FormData) {
+// Creates a client record only — no invite is sent. They'll show up
+// on the /admin dashboard, where you send (or wait to send) their
+// invite whenever it's actually time, via a separate button.
+export async function createClientRecord(formData: FormData) {
   const fullName = (formData.get('fullName') as string)?.trim();
   const email = (formData.get('email') as string)?.trim().toLowerCase();
   const phone = (formData.get('phone') as string)?.trim() || null;
@@ -21,27 +17,29 @@ export async function createAndInviteClient(formData: FormData) {
   }
 
   const supabase = createAdminClient();
-
-  const { data: client, error } = await supabase
-    .from('clients')
-    .insert({ full_name: fullName, email, phone })
-    .select()
-    .single();
+  const { error } = await supabase.from('clients').insert({ full_name: fullName, email, phone });
 
   if (error) {
     redirect(`/admin/clients/new?error=${encodeURIComponent(error.message)}`);
   }
 
-  try {
-    await inviteClient(client.id, email);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    redirect(
-      `/admin/clients/new?error=${encodeURIComponent(
-        `Client was created but the invite email failed to send: ${message}`
-      )}`
-    );
+  redirect('/admin?success=created');
+}
+
+// The dashboard's "Send invite" / "Resend invite" button calls this
+// directly — one click, one email, right when you decide it's time.
+export async function sendInviteAction(formData: FormData) {
+  const clientId = formData.get('clientId') as string;
+
+  if (!clientId) {
+    redirect(`/admin?error=${encodeURIComponent('Missing client.')}`);
   }
 
-  redirect(`/admin/clients/new?success=1&email=${encodeURIComponent(email)}`);
+  try {
+    const email = await sendClientInvite(clientId);
+    redirect(`/admin?success=invited&email=${encodeURIComponent(email)}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    redirect(`/admin?error=${encodeURIComponent(message)}`);
+  }
 }

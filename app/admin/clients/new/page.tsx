@@ -1,33 +1,28 @@
-import { createAndInviteClient } from '@/lib/admin/actions';
+import { createClientRecord } from '@/lib/admin/actions';
 
-// Internal-only tool: create a client record and immediately send
-// their one-time invite email. Protected by Basic Auth at the
-// middleware level (see middleware.ts) rather than Supabase auth,
-// since this is a single-operator admin tool for now, not something
-// clients ever see.
+// Creates a client record only. The invite itself is sent separately
+// from the /admin dashboard, whenever it's actually time — not
+// automatically the moment this form is submitted.
 export const dynamic = 'force-dynamic';
 
 export default function NewClientPage({
   searchParams,
 }: {
-  searchParams: { success?: string; error?: string; email?: string };
+  searchParams: { error?: string };
 }) {
   return (
     <div style={{ maxWidth: 480, margin: '80px auto', padding: '0 16px' }}>
       <h1>Add a new client</h1>
       <p style={{ color: '#666' }}>
-        Creates the client record and immediately sends them a one-time invite link by
-        email.
+        This just creates the record. You'll send their portal invite separately, from the
+        dashboard, whenever you're ready.
       </p>
 
-      {searchParams.success && (
-        <p style={{ color: 'green' }}>Invite sent to {searchParams.email}.</p>
-      )}
       {searchParams.error && (
         <p style={{ color: 'crimson' }}>{decodeURIComponent(searchParams.error)}</p>
       )}
 
-      <form action={createAndInviteClient}>
+      <form action={createClientRecord}>
         <div style={{ marginBottom: 12 }}>
           <label htmlFor="fullName">Full name</label>
           <input
@@ -53,7 +48,7 @@ export default function NewClientPage({
           <input id="phone" name="phone" type="tel" style={{ width: '100%', padding: 8 }} />
         </div>
         <button type="submit" style={{ padding: '8px 16px' }}>
-          Create client &amp; send invite
+          Add client
         </button>
       </form>
     </div>
