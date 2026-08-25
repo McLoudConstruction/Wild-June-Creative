@@ -1,0 +1,151 @@
+:root {
+  --cream: #f2ebe2;
+  --blush: #dbbeb6;
+  --gold: #c4a672;
+  --taupe: #b8ab9a;
+  --warm-gray: #827c73;
+  --ink: #40382e;
+  --sage: #898f70;
+  --dusty-blue: #a1b1c4;
+  --paper: #f2f2f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-sans), sans-serif;
+  font-weight: 300;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 500;
+  margin: 0;
+  color: var(--ink);
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* Header */
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 26px 0;
+  gap: 24px;
+}
+
+.nav-list {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-link {
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+@media (max-width: 720px) {
+  .header-row {
+    flex-wrap: wrap;
+    row-gap: 16px;
+  }
+  .nav-list {
+    gap: 1.1rem;
+  }
+}
+
+/* Layout grids */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 64px;
+  align-items: center;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.packages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 28px;
+}
+
+@media (max-width: 860px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .hero-grid > div:last-child {
+    order: -1;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+  .about-grid > img {
+    max-width: 260px;
+    margin: 0 auto;
+  }
+}
+
+.btn-primary {
+  display: inline-block;
+  background: var(--ink);
+  color: var(--cream);
+  padding: 14px 30px;
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.btn-secondary {
+  display: inline-block;
+  padding: 14px 0;
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
