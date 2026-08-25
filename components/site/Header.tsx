@@ -11,10 +11,10 @@ export function Header() {
           <Image
             src="/brand/wordmark-dark.png"
             alt="Wild June Creative"
-            width={395}
-            height={165}
+            width={1593}
+            height={483}
             priority
-            style={{ height: 'auto', width: '170px' }}
+            style={{ height: 'auto', width: '190px' }}
           />
         </Link>
 
