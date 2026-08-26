@@ -109,6 +109,32 @@ img {
   gap: 28px;
 }
 
+.package-row {
+  display: flex;
+  gap: 48px;
+  align-items: center;
+  margin-bottom: 64px;
+}
+
+.package-row > * {
+  flex: 1 1 0;
+  min-width: 280px;
+}
+
+.package-row-reverse {
+  flex-direction: row-reverse;
+}
+
+.portfolio-grid {
+  columns: 3 220px;
+  column-gap: 16px;
+}
+
+.portfolio-grid > div {
+  break-inside: avoid;
+  margin-bottom: 16px;
+}
+
 @media (max-width: 860px) {
   .hero-grid {
     grid-template-columns: 1fr;
@@ -122,9 +148,17 @@ img {
   .about-grid {
     grid-template-columns: 1fr;
   }
-  .about-grid > img {
-    max-width: 260px;
+  .about-grid > img,
+  .about-grid > div:first-child {
+    max-width: 320px;
     margin: 0 auto;
+  }
+  .package-row,
+  .package-row-reverse {
+    flex-direction: column;
+  }
+  .portfolio-grid {
+    columns: 2 160px;
   }
 }
 
