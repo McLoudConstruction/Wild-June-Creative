@@ -73,7 +73,7 @@ export default async function AdminDashboard({
   const clients = await getClientsWithStatus();
 
   return (
-    <div style={{ maxWidth: 1000, margin: '60px auto', padding: '0 16px' }}>
+    <div>
       <div
         style={{
           display: 'flex',
@@ -83,20 +83,12 @@ export default async function AdminDashboard({
         }}
       >
         <h1>Clients</h1>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <Link href="/admin/settings/packages" style={{ fontSize: 14 }}>
-            Packages
-          </Link>
-          <Link href="/admin/settings/watermark" style={{ fontSize: 14 }}>
-            Watermark settings
-          </Link>
-          <Link
-            href="/admin/clients/new"
-            style={{ padding: '8px 16px', border: '1px solid #333', borderRadius: 4 }}
-          >
-            + Add client
-          </Link>
-        </div>
+        <Link
+          href="/admin/clients/new"
+          style={{ padding: '8px 16px', border: '1px solid #333', borderRadius: 4 }}
+        >
+          + Add client
+        </Link>
       </div>
 
       {searchParams.success === 'created' && (
@@ -122,7 +114,7 @@ export default async function AdminDashboard({
               <th style={{ padding: 8 }}>Name</th>
               <th style={{ padding: 8 }}>Email</th>
               <th style={{ padding: 8 }}>Status</th>
-              <th style={{ padding: 8 }} colSpan={4} />
+              <th style={{ padding: 8 }} colSpan={3} />
             </tr>
           </thead>
           <tbody>
@@ -130,7 +122,9 @@ export default async function AdminDashboard({
               const status = statusStyles[client.status];
               return (
                 <tr key={client.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: 8 }}>{client.full_name}</td>
+                  <td style={{ padding: 8 }}>
+                    <Link href={`/admin/clients/${client.id}/gallery`}>{client.full_name}</Link>
+                  </td>
                   <td style={{ padding: 8 }}>{client.email}</td>
                   <td style={{ padding: 8, color: status.color }}>{status.label}</td>
                   <td style={{ padding: 8 }}>
@@ -144,16 +138,11 @@ export default async function AdminDashboard({
                     )}
                   </td>
                   <td style={{ padding: 8 }}>
-                    <Link href={`/admin/clients/${client.id}/edit`} style={{ padding: '6px 12px' }}>
-                      Edit
-                    </Link>
-                  </td>
-                  <td style={{ padding: 8 }}>
                     <Link
                       href={`/admin/clients/${client.id}/gallery`}
                       style={{ padding: '6px 12px' }}
                     >
-                      Gallery
+                      View
                     </Link>
                   </td>
                   <td style={{ padding: 8 }}>

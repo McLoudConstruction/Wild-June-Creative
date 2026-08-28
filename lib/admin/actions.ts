@@ -109,7 +109,7 @@ export async function updateClientRecord(formData: FormData) {
     redirect(`/admin/clients/${clientId}/edit?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect('/admin?success=updated');
+  redirect(`/admin/clients/${clientId}/gallery?success=updated`);
 }
 
 // Deleting a client also deletes their Supabase Auth login, not just

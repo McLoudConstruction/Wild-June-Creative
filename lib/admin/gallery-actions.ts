@@ -28,10 +28,10 @@ export async function createGalleryAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+    redirect(`/admin/clients/${clientId}/upload?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect(`/admin/clients/${clientId}/gallery?success=gallery_created`);
+  redirect(`/admin/clients/${clientId}/upload?success=gallery_created`);
 }
 
 // Deletes a photo — both the storage object and the database row.

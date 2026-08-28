@@ -24,10 +24,17 @@ export function PhotoGrid({
   photos,
   folders,
   clientId,
+  filterFolderId,
 }: {
   photos: Photo[];
   folders: Folder[];
   clientId: string;
+  // When provided, shows only the matching folder's photos as a single
+  // section instead of the full folder-by-folder breakdown — this is
+  // what powers clicking a specific folder in the Gallery sidebar.
+  // 'unsorted' selects photos with no folder_id; omit entirely to show
+  // every folder grouped, which is the "All Photos" view.
+  filterFolderId?: string | 'unsorted';
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkFolderId, setBulkFolderId] = useState('');
@@ -36,8 +43,22 @@ export function PhotoGrid({
   // Same grouping as before: one section per folder, plus a trailing
   // "Unsorted" bucket for anything without a folder_id — hidden
   // entirely once it's empty so the page doesn't show a permanent
-  // dead section once everything's been sorted.
+  // dead section once everything's been sorted. When filterFolderId is
+  // set, skip the breakdown and show just that one folder as a single
+  // flat section instead.
   const groups = useMemo(() => {
+    if (filterFolderId !== undefined) {
+      const matching =
+        filterFolderId === 'unsorted'
+          ? photos.filter((p) => !p.folder_id)
+          : photos.filter((p) => p.folder_id === filterFolderId);
+      const name =
+        filterFolderId === 'unsorted'
+          ? 'Unsorted'
+          : folders.find((f) => f.id === filterFolderId)?.name ?? 'Folder';
+      return [{ id: filterFolderId, name, photos: matching }];
+    }
+
     const named = folders.map((folder) => ({
       id: folder.id,
       name: folder.name,
@@ -49,7 +70,7 @@ export function PhotoGrid({
       photos: photos.filter((p) => !p.folder_id),
     };
     return unsorted.photos.length > 0 ? [...named, unsorted] : named;
-  }, [photos, folders]);
+  }, [photos, folders, filterFolderId]);
 
   function toggle(photoId: string) {
     setSelectedIds((current) => {

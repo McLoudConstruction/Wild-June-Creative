@@ -2,26 +2,18 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getWatermarkSettings } from '@/lib/admin/watermark';
-import { createGalleryAction, createFolderAction, renameFolderAction } from '@/lib/admin/gallery-actions';
-import { GalleryUploader } from '@/components/GalleryUploader';
-import { BackToDashboard } from '@/components/admin/BackToDashboard';
+import { createFolderAction, renameFolderAction } from '@/lib/admin/gallery-actions';
 import { DeleteFolderButton } from '@/components/admin/DeleteFolderButton';
 import { PhotoGrid } from '@/components/admin/PhotoGrid';
 
 export const dynamic = 'force-dynamic';
-// Gives the per-photo processing action (compress + watermark +
-// thumbnail) real headroom — a large original can take a few seconds
-// through sharp, and this page is where that action gets invoked
-// from.
-export const maxDuration = 60;
 
 export default async function ClientGalleryPage({
   params,
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { error?: string; success?: string; count?: string };
+  searchParams: { error?: string; success?: string; count?: string; folder?: string };
 }) {
   noStore();
   const supabase = createAdminClient();
@@ -35,9 +27,6 @@ export default async function ClientGalleryPage({
   if (!client) {
     notFound();
   }
-
-  const watermarkSettings = await getWatermarkSettings();
-  const watermarkConfigured = Boolean(watermarkSettings?.storage_path);
 
   // One client can technically have more than one gallery over time,
   // but for now we work with their most recent one — multi-gallery
@@ -83,17 +72,17 @@ export default async function ClientGalleryPage({
     })
   );
 
-  return (
-    <div style={{ maxWidth: 900, margin: '60px auto', padding: '0 16px' }}>
-      <BackToDashboard />
-      <h1>Gallery — {client.full_name}</h1>
-      <p style={{ color: '#666' }}>{client.email}</p>
+  const unsortedCount = photosWithUrls.filter((p) => !p.folder_id).length;
 
+  // searchParams.folder drives which section the sidebar highlights
+  // and which photos PhotoGrid shows — omitted entirely means "All
+  // Photos" (every folder shown, grouped).
+  const activeFolder = searchParams.folder;
+
+  return (
+    <div>
       {searchParams.success === 'gallery_created' && (
         <p style={{ color: 'green' }}>Gallery created.</p>
-      )}
-      {searchParams.success === 'photos_uploaded' && (
-        <p style={{ color: 'green' }}>Photos uploaded.</p>
       )}
       {searchParams.success === 'photo_deleted' && (
         <p style={{ color: 'green' }}>Photo deleted.</p>
@@ -115,71 +104,90 @@ export default async function ClientGalleryPage({
           {searchParams.count ?? 'Selected'} photo{searchParams.count === '1' ? '' : 's'} moved.
         </p>
       )}
+      {searchParams.success === 'updated' && (
+        <p style={{ color: 'green' }}>Client updated.</p>
+      )}
       {searchParams.error && (
         <p style={{ color: 'crimson' }}>{decodeURIComponent(searchParams.error)}</p>
       )}
 
       {!gallery ? (
-        <div style={{ marginTop: 24 }}>
-          <p>This client doesn't have a gallery yet.</p>
-          <form action={createGalleryAction} style={{ maxWidth: 400 }}>
-            <input type="hidden" name="clientId" value={client.id} />
-            <div style={{ marginBottom: 12 }}>
-              <label htmlFor="title">Gallery title (optional)</label>
-              <input
-                id="title"
-                name="title"
-                type="text"
-                placeholder="e.g. Smith Family Fall Session"
-                style={{ width: '100%', padding: 8 }}
-              />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label htmlFor="availabilityDays">Available for how many days?</label>
-              <input
-                id="availabilityDays"
-                name="availabilityDays"
-                type="number"
-                defaultValue={30}
-                min={1}
-                style={{ width: '100%', padding: 8 }}
-              />
-            </div>
-            <button type="submit" style={{ padding: '8px 16px' }}>
-              Create gallery
-            </button>
-          </form>
-        </div>
+        <p style={{ color: '#888', marginTop: 16 }}>
+          This client doesn't have a gallery yet — head to{' '}
+          <Link href={`/admin/clients/${client.id}/upload`}>Upload</Link> to create one and add
+          photos.
+        </p>
       ) : (
-        <div style={{ marginTop: 24 }}>
-          <p style={{ color: '#666' }}>
-            {gallery.title || 'Untitled gallery'} — expires{' '}
-            {gallery.expires_at ? new Date(gallery.expires_at).toLocaleDateString() : 'never'}
-          </p>
+        <div style={{ display: 'flex', gap: 32, marginTop: 8, alignItems: 'flex-start' }}>
+          <aside style={{ width: 220, flexShrink: 0 }}>
+            <h4
+              style={{
+                fontSize: 13,
+                color: '#888',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Folders
+            </h4>
 
-          <GalleryUploader
-            galleryId={gallery.id}
-            watermarkConfigured={watermarkConfigured}
-            folders={folderList}
-          />
+            <nav style={{ display: 'flex', flexDirection: 'column', marginTop: 8 }}>
+              <Link
+                href={`/admin/clients/${client.id}/gallery`}
+                style={{
+                  padding: '6px 8px',
+                  borderRadius: 4,
+                  fontSize: 14,
+                  background: !activeFolder ? '#eee' : 'transparent',
+                  fontWeight: !activeFolder ? 600 : 400,
+                }}
+              >
+                All photos ({photosWithUrls.length})
+              </Link>
 
-          <div
-            style={{
-              marginTop: 24,
-              paddingTop: 16,
-              borderTop: '1px solid #eee',
-            }}
-          >
-            <h3 style={{ fontSize: 15 }}>Folders</h3>
-            <p style={{ color: '#888', fontSize: 13, marginTop: 4 }}>
-              Group photos into named albums — e.g. "Reception - Family Photos" vs "Reception -
-              Dancing". Each folder becomes its own section (and its own pre-named, split-if-large
-              zip download) in the client's gallery.
-            </p>
+              {folderList.map((folder) => {
+                const count = photosWithUrls.filter((p) => p.folder_id === folder.id).length;
+                const isActive = activeFolder === folder.id;
+                return (
+                  <Link
+                    key={folder.id}
+                    href={`/admin/clients/${client.id}/gallery?folder=${folder.id}`}
+                    style={{
+                      padding: '6px 8px',
+                      borderRadius: 4,
+                      fontSize: 14,
+                      background: isActive ? '#eee' : 'transparent',
+                      fontWeight: isActive ? 600 : 400,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {folder.name} ({count})
+                  </Link>
+                );
+              })}
+
+              {unsortedCount > 0 && (
+                <Link
+                  href={`/admin/clients/${client.id}/gallery?folder=unsorted`}
+                  style={{
+                    padding: '6px 8px',
+                    borderRadius: 4,
+                    fontSize: 14,
+                    color: '#888',
+                    background: activeFolder === 'unsorted' ? '#eee' : 'transparent',
+                    fontWeight: activeFolder === 'unsorted' ? 600 : 400,
+                  }}
+                >
+                  Unsorted ({unsortedCount})
+                </Link>
+              )}
+            </nav>
 
             <form
               action={createFolderAction}
-              style={{ display: 'flex', gap: 8, maxWidth: 400, marginTop: 12 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 16 }}
             >
               <input type="hidden" name="galleryId" value={gallery.id} />
               <input type="hidden" name="clientId" value={client.id} />
@@ -188,54 +196,58 @@ export default async function ClientGalleryPage({
                 type="text"
                 placeholder="New folder name"
                 required
-                style={{ flex: 1, padding: 8 }}
+                style={{ padding: 6, fontSize: 13 }}
               />
-              <button type="submit" style={{ padding: '8px 16px' }}>
+              <button type="submit" style={{ padding: '6px 10px', fontSize: 13 }}>
                 Add folder
               </button>
             </form>
 
-            {folderList.length > 0 && (
-              <ul style={{ marginTop: 16, paddingLeft: 0, listStyle: 'none' }}>
-                {folderList.map((folder) => (
-                  <li
-                    key={folder.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: '6px 0',
-                      borderBottom: '1px solid #f2f2f2',
-                    }}
-                  >
-                    <form
-                      action={renameFolderAction}
-                      style={{ display: 'flex', gap: 6, flex: 1, alignItems: 'center' }}
-                    >
-                      <input type="hidden" name="folderId" value={folder.id} />
-                      <input type="hidden" name="clientId" value={client.id} />
-                      <input
-                        name="name"
-                        type="text"
-                        defaultValue={folder.name}
-                        style={{ flex: 1, padding: 6, fontSize: 13 }}
-                      />
-                      <button type="submit" style={{ fontSize: 12, padding: '4px 10px' }}>
-                        Rename
-                      </button>
-                    </form>
-                    <DeleteFolderButton folderId={folder.id} clientId={client.id} />
-                  </li>
-                ))}
-              </ul>
+            {folderList.length > 0 && activeFolder && activeFolder !== 'unsorted' && (
+              <div style={{ marginTop: 16, borderTop: '1px solid #eee', paddingTop: 12 }}>
+                {(() => {
+                  const folder = folderList.find((f) => f.id === activeFolder);
+                  if (!folder) return null;
+                  return (
+                    <>
+                      <form
+                        action={renameFolderAction}
+                        style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+                      >
+                        <input type="hidden" name="folderId" value={folder.id} />
+                        <input type="hidden" name="clientId" value={client.id} />
+                        <input
+                          name="name"
+                          type="text"
+                          defaultValue={folder.name}
+                          style={{ padding: 6, fontSize: 13 }}
+                        />
+                        <button type="submit" style={{ padding: '6px 10px', fontSize: 13 }}>
+                          Rename folder
+                        </button>
+                      </form>
+                      <div style={{ marginTop: 8 }}>
+                        <DeleteFolderButton folderId={folder.id} clientId={client.id} />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </aside>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {photosWithUrls.length === 0 ? (
+              <p style={{ color: '#888' }}>No photos uploaded yet.</p>
+            ) : (
+              <PhotoGrid
+                photos={photosWithUrls}
+                folders={folderList}
+                clientId={client.id}
+                filterFolderId={activeFolder}
+              />
             )}
           </div>
-
-          {photosWithUrls.length === 0 ? (
-            <p style={{ color: '#888', marginTop: 16 }}>No photos uploaded yet.</p>
-          ) : (
-            <PhotoGrid photos={photosWithUrls} folders={folderList} clientId={client.id} />
-          )}
         </div>
       )}
     </div>

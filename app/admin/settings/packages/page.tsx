@@ -1,7 +1,7 @@
 import { unstable_noStore as noStore } from 'next/cache';
+import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createPackageAction, togglePackageActiveAction } from '@/lib/admin/package-actions';
-import { BackToDashboard } from '@/components/admin/BackToDashboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +18,10 @@ export default async function PackagesSettingsPage({
     .order('created_at', { ascending: false });
 
   return (
-    <div style={{ maxWidth: 600, margin: '60px auto', padding: '0 16px' }}>
-      <BackToDashboard />
+    <div style={{ maxWidth: 600 }}>
+      <Link href="/admin/settings" style={{ fontSize: 13, color: '#666' }}>
+        ← Settings
+      </Link>
       <h1>Session packages</h1>
       <p style={{ color: '#666' }}>
         These show up on the public booking page at /book — only active ones are visible to

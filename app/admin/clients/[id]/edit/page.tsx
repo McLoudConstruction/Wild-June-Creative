@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { updateClientRecord } from '@/lib/admin/actions';
-import { BackToDashboard } from '@/components/admin/BackToDashboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,9 +24,8 @@ export default async function EditClientPage({
   }
 
   return (
-    <div style={{ maxWidth: 480, margin: '80px auto', padding: '0 16px' }}>
-      <BackToDashboard />
-      <h1>Edit client</h1>
+    <div style={{ maxWidth: 480, marginTop: 24 }}>
+      <h3 style={{ fontSize: 16, marginBottom: 16 }}>Edit client details</h3>
       {client.auth_user_id && (
         <p style={{ color: '#666', fontSize: 14 }}>
           This client already has a login. Changing their email here updates their login email
