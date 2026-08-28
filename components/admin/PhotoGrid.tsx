@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
+import { Trash2 } from 'lucide-react';
 import {
   deletePhotoAction,
   moveManyPhotosToFolderAction,
@@ -255,8 +256,8 @@ export function PhotoGrid({
                         <span
                           style={{
                             position: 'absolute',
-                            top: 4,
-                            right: 4,
+                            bottom: 4,
+                            left: 4,
                             background: 'rgba(0,0,0,0.6)',
                             color: 'white',
                             fontSize: 10,
@@ -268,16 +269,15 @@ export function PhotoGrid({
                         </span>
                       )}
 
-                      {folders.length > 0 && (
-                        <PhotoFolderSelect
-                          photoId={photo.id}
-                          clientId={clientId}
-                          currentFolderId={photo.folder_id}
-                          folders={folders}
-                        />
-                      )}
-
-                      <form action={deletePhotoAction} style={{ marginTop: 4 }}>
+                      <form
+                        action={deletePhotoAction}
+                        onSubmit={(e) => {
+                          if (!confirm(`Delete "${photo.file_name}"? This can't be undone.`)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        style={{ position: 'absolute', top: 4, right: 4, zIndex: 1 }}
+                      >
                         <input type="hidden" name="photoId" value={photo.id} />
                         <input type="hidden" name="storagePath" value={photo.storage_path} />
                         <input
@@ -293,11 +293,33 @@ export function PhotoGrid({
                         <input type="hidden" name="clientId" value={clientId} />
                         <button
                           type="submit"
-                          style={{ fontSize: 12, padding: '2px 8px', color: 'crimson' }}
+                          aria-label={`Delete ${photo.file_name}`}
+                          style={{
+                            background: 'rgba(255,255,255,0.9)',
+                            border: 'none',
+                            borderRadius: 4,
+                            width: 22,
+                            height: 22,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            color: 'crimson',
+                            padding: 0,
+                          }}
                         >
-                          Delete
+                          <Trash2 size={13} />
                         </button>
                       </form>
+
+                      {folders.length > 0 && (
+                        <PhotoFolderSelect
+                          photoId={photo.id}
+                          clientId={clientId}
+                          currentFolderId={photo.folder_id}
+                          folders={folders}
+                        />
+                      )}
                     </div>
                   );
                 })}
