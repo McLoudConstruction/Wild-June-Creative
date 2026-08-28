@@ -10,15 +10,20 @@ import { getSignedUploadUrl, processStagedPhoto } from '@/lib/admin/upload-actio
 // the same instant.
 const CONCURRENCY = 3;
 
+type Folder = { id: string; name: string };
+
 export function GalleryUploader({
   galleryId,
   watermarkConfigured,
+  folders = [],
 }: {
   galleryId: string;
   watermarkConfigured: boolean;
+  folders?: Folder[];
 }) {
   const [files, setFiles] = useState<File[]>([]);
   const [applyWatermark, setApplyWatermark] = useState(watermarkConfigured);
+  const [folderId, setFolderId] = useState('');
   const [uploading, setUploading] = useState(false);
   const [completed, setCompleted] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
@@ -66,6 +71,7 @@ export function GalleryUploader({
             fileName: file.name,
             applyWatermark,
             sortOrder: currentIndex,
+            folderId: folderId || null,
           });
 
           if (!result.success) {
@@ -103,6 +109,24 @@ export function GalleryUploader({
         disabled={uploading}
         onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
       />
+
+      <div style={{ marginTop: 8 }}>
+        <label htmlFor="uploadFolder">Add these photos to a folder</label>
+        <select
+          id="uploadFolder"
+          value={folderId}
+          disabled={uploading}
+          onChange={(e) => setFolderId(e.target.value)}
+          style={{ display: 'block', width: '100%', padding: 8, marginTop: 4 }}
+        >
+          <option value="">No folder (unsorted)</option>
+          {folders.map((folder) => (
+            <option key={folder.id} value={folder.id}>
+              {folder.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div style={{ marginTop: 8 }}>
         <label>

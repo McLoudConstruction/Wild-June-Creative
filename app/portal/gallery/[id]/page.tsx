@@ -1,9 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { FavoriteButton } from '@/components/FavoriteButton';
-import { DownloadButton } from '@/components/DownloadButton';
 import { DownloadAllButton } from '@/components/DownloadAllButton';
+import { GalleryViewer } from '@/components/GalleryViewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +55,12 @@ export default async function GalleryPage({ params }: { params: { id: string } }
     .eq('gallery_id', gallery.id)
     .order('sort_order', { ascending: true });
 
+  const { data: folders } = await supabase
+    .from('photo_folders')
+    .select('*')
+    .eq('gallery_id', gallery.id)
+    .order('sort_order', { ascending: true });
+
   const photosWithUrls = await Promise.all(
     (photos ?? []).map(async (photo) => {
       const { data: fullSigned } = await supabase.storage
@@ -96,6 +101,31 @@ export default async function GalleryPage({ params }: { params: { id: string } }
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 
+  const slugify = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+  // Photos in a named folder become their own "album" section (with
+  // its own pre-named, size-split zip download); anything without a
+  // folder falls into a single "Photos" bucket so it still shows up
+  // rather than disappearing.
+  const albums = [
+    ...(folders ?? []).map((folder) => ({
+      id: folder.id,
+      name: folder.name,
+      slug: slugify(folder.name),
+      photos: photosWithUrls.filter((p) => p.folder_id === folder.id),
+    })),
+    {
+      id: 'unsorted',
+      name: (folders ?? []).length > 0 ? 'More photos' : 'Photos',
+      slug: 'photos',
+      photos: photosWithUrls.filter((p) => !p.folder_id),
+    },
+  ].filter((album) => album.photos.length > 0);
+
   return (
     <div style={{ maxWidth: 1000, margin: '60px auto', padding: '0 16px' }}>
       <h1>{gallery.title || 'Your gallery'}</h1>
@@ -134,61 +164,7 @@ export default async function GalleryPage({ params }: { params: { id: string } }
           Photos haven't been added to this gallery yet — check back soon.
         </p>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-            gap: 12,
-            marginTop: 24,
-          }}
-        >
-          {photosWithUrls.map((photo) =>
-            photo.gridUrl ? (
-              <div key={photo.id} style={{ position: 'relative' }}>
-                <a href={photo.fullUrl ?? photo.gridUrl} target="_blank" rel="noopener noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photo.gridUrl}
-                    alt={photo.file_name}
-                    loading="lazy"
-                    style={{
-                      width: '100%',
-                      height: 200,
-                      objectFit: 'cover',
-                      borderRadius: 6,
-                      display: 'block',
-                    }}
-                  />
-                </a>
-                <FavoriteButton photoId={photo.id} initialFavorite={photo.is_favorite} />
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 6,
-                    left: 6,
-                    display: 'flex',
-                    gap: 4,
-                  }}
-                >
-                  {photo.downloadWebUrl && (
-                    <DownloadButton
-                      url={photo.downloadWebUrl}
-                      filename={photo.downloadWebFilename}
-                      label="Web"
-                    />
-                  )}
-                  {photo.downloadOriginalUrl && (
-                    <DownloadButton
-                      url={photo.downloadOriginalUrl}
-                      filename={photo.downloadOriginalFilename}
-                      label="Full res"
-                    />
-                  )}
-                </div>
-              </div>
-            ) : null
-          )}
-        </div>
+        <GalleryViewer albums={albums} gallerySlug={gallerySlug} />
       )}
     </div>
   );

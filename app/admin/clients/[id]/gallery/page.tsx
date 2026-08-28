@@ -3,9 +3,11 @@ import { notFound } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getWatermarkSettings } from '@/lib/admin/watermark';
-import { createGalleryAction, deletePhotoAction } from '@/lib/admin/gallery-actions';
+import { createGalleryAction, createFolderAction, renameFolderAction } from '@/lib/admin/gallery-actions';
 import { GalleryUploader } from '@/components/GalleryUploader';
 import { BackToDashboard } from '@/components/admin/BackToDashboard';
+import { DeleteFolderButton } from '@/components/admin/DeleteFolderButton';
+import { PhotoGrid } from '@/components/admin/PhotoGrid';
 
 export const dynamic = 'force-dynamic';
 // Gives the per-photo processing action (compress + watermark +
@@ -19,7 +21,7 @@ export default async function ClientGalleryPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { error?: string; success?: string };
+  searchParams: { error?: string; success?: string; count?: string };
 }) {
   noStore();
   const supabase = createAdminClient();
@@ -57,6 +59,16 @@ export default async function ClientGalleryPage({
         .order('sort_order', { ascending: true })
     : { data: [] };
 
+  const { data: folders } = gallery
+    ? await supabase
+        .from('photo_folders')
+        .select('*')
+        .eq('gallery_id', gallery.id)
+        .order('sort_order', { ascending: true })
+    : { data: [] };
+
+  const folderList = folders ?? [];
+
   // Signed URLs so the (private) storage bucket's images can actually
   // render here — 1 hour is plenty for an admin reviewing an upload.
   // The grid uses the small thumbnail specifically, not the full
@@ -85,6 +97,23 @@ export default async function ClientGalleryPage({
       )}
       {searchParams.success === 'photo_deleted' && (
         <p style={{ color: 'green' }}>Photo deleted.</p>
+      )}
+      {searchParams.success === 'folder_created' && (
+        <p style={{ color: 'green' }}>Folder created.</p>
+      )}
+      {searchParams.success === 'folder_renamed' && (
+        <p style={{ color: 'green' }}>Folder renamed.</p>
+      )}
+      {searchParams.success === 'folder_deleted' && (
+        <p style={{ color: 'green' }}>Folder deleted. Its photos are now unsorted.</p>
+      )}
+      {searchParams.success === 'photo_moved' && (
+        <p style={{ color: 'green' }}>Photo moved.</p>
+      )}
+      {searchParams.success === 'photos_moved' && (
+        <p style={{ color: 'green' }}>
+          {searchParams.count ?? 'Selected'} photo{searchParams.count === '1' ? '' : 's'} moved.
+        </p>
       )}
       {searchParams.error && (
         <p style={{ color: 'crimson' }}>{decodeURIComponent(searchParams.error)}</p>
@@ -128,61 +157,84 @@ export default async function ClientGalleryPage({
             {gallery.expires_at ? new Date(gallery.expires_at).toLocaleDateString() : 'never'}
           </p>
 
-          <GalleryUploader galleryId={gallery.id} watermarkConfigured={watermarkConfigured} />
+          <GalleryUploader
+            galleryId={gallery.id}
+            watermarkConfigured={watermarkConfigured}
+            folders={folderList}
+          />
+
+          <div
+            style={{
+              marginTop: 24,
+              paddingTop: 16,
+              borderTop: '1px solid #eee',
+            }}
+          >
+            <h3 style={{ fontSize: 15 }}>Folders</h3>
+            <p style={{ color: '#888', fontSize: 13, marginTop: 4 }}>
+              Group photos into named albums — e.g. "Reception - Family Photos" vs "Reception -
+              Dancing". Each folder becomes its own section (and its own pre-named, split-if-large
+              zip download) in the client's gallery.
+            </p>
+
+            <form
+              action={createFolderAction}
+              style={{ display: 'flex', gap: 8, maxWidth: 400, marginTop: 12 }}
+            >
+              <input type="hidden" name="galleryId" value={gallery.id} />
+              <input type="hidden" name="clientId" value={client.id} />
+              <input
+                name="name"
+                type="text"
+                placeholder="New folder name"
+                required
+                style={{ flex: 1, padding: 8 }}
+              />
+              <button type="submit" style={{ padding: '8px 16px' }}>
+                Add folder
+              </button>
+            </form>
+
+            {folderList.length > 0 && (
+              <ul style={{ marginTop: 16, paddingLeft: 0, listStyle: 'none' }}>
+                {folderList.map((folder) => (
+                  <li
+                    key={folder.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '6px 0',
+                      borderBottom: '1px solid #f2f2f2',
+                    }}
+                  >
+                    <form
+                      action={renameFolderAction}
+                      style={{ display: 'flex', gap: 6, flex: 1, alignItems: 'center' }}
+                    >
+                      <input type="hidden" name="folderId" value={folder.id} />
+                      <input type="hidden" name="clientId" value={client.id} />
+                      <input
+                        name="name"
+                        type="text"
+                        defaultValue={folder.name}
+                        style={{ flex: 1, padding: 6, fontSize: 13 }}
+                      />
+                      <button type="submit" style={{ fontSize: 12, padding: '4px 10px' }}>
+                        Rename
+                      </button>
+                    </form>
+                    <DeleteFolderButton folderId={folder.id} clientId={client.id} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           {photosWithUrls.length === 0 ? (
-            <p style={{ color: '#888' }}>No photos uploaded yet.</p>
+            <p style={{ color: '#888', marginTop: 16 }}>No photos uploaded yet.</p>
           ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                gap: 8,
-                marginTop: 16,
-              }}
-            >
-              {photosWithUrls.map((photo) => (
-                <div key={photo.id} style={{ position: 'relative' }}>
-                  {photo.url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={photo.url}
-                      alt={photo.file_name}
-                      style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4 }}
-                    />
-                  )}
-                  {photo.is_watermarked && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: 4,
-                        left: 4,
-                        background: 'rgba(0,0,0,0.6)',
-                        color: 'white',
-                        fontSize: 10,
-                        padding: '2px 6px',
-                        borderRadius: 3,
-                      }}
-                    >
-                      Watermarked
-                    </span>
-                  )}
-                  <form action={deletePhotoAction} style={{ marginTop: 4 }}>
-                    <input type="hidden" name="photoId" value={photo.id} />
-                    <input type="hidden" name="storagePath" value={photo.storage_path} />
-                    <input type="hidden" name="thumbnailPath" value={photo.thumbnail_path ?? ''} />
-                    <input type="hidden" name="originalPath" value={photo.original_path ?? ''} />
-                    <input type="hidden" name="clientId" value={client.id} />
-                    <button
-                      type="submit"
-                      style={{ fontSize: 12, padding: '2px 8px', color: 'crimson' }}
-                    >
-                      Delete
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
+            <PhotoGrid photos={photosWithUrls} folders={folderList} clientId={client.id} />
           )}
         </div>
       )}

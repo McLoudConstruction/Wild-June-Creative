@@ -68,3 +68,130 @@ export async function deletePhotoAction(formData: FormData) {
 
   redirect(`/admin/clients/${clientId}/gallery?success=photo_deleted`);
 }
+
+// Folders ("albums") group photos within one gallery — e.g. separating
+// 50 reception family photos from the rest of the reception shots —
+// so both browsing and zip downloads on the client side can be split
+// the same way. sort_order is just the count of existing folders at
+// creation time, so folders list in the order they were made unless
+// deliberately reordered later.
+export async function createFolderAction(formData: FormData) {
+  const galleryId = formData.get('galleryId') as string;
+  const clientId = formData.get('clientId') as string;
+  const name = (formData.get('name') as string)?.trim();
+
+  if (!galleryId || !name) {
+    redirect(
+      `/admin/clients/${clientId}/gallery?error=${encodeURIComponent('Folder name is required.')}`
+    );
+  }
+
+  const supabase = createAdminClient();
+
+  const { count } = await supabase
+    .from('photo_folders')
+    .select('id', { count: 'exact', head: true })
+    .eq('gallery_id', galleryId);
+
+  const { error } = await supabase.from('photo_folders').insert({
+    gallery_id: galleryId,
+    name,
+    sort_order: count ?? 0,
+  });
+
+  if (error) {
+    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`/admin/clients/${clientId}/gallery?success=folder_created`);
+}
+
+export async function renameFolderAction(formData: FormData) {
+  const folderId = formData.get('folderId') as string;
+  const clientId = formData.get('clientId') as string;
+  const name = (formData.get('name') as string)?.trim();
+
+  if (!folderId || !name) {
+    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent('Name is required.')}`);
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('photo_folders').update({ name }).eq('id', folderId);
+
+  if (error) {
+    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`/admin/clients/${clientId}/gallery?success=folder_renamed`);
+}
+
+// Deleting a folder never deletes photos — the folder_id foreign key
+// is "on delete set null", so photos inside just become unsorted
+// again. The folder is purely an organizational label.
+export async function deleteFolderAction(formData: FormData) {
+  const folderId = formData.get('folderId') as string;
+  const clientId = formData.get('clientId') as string;
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('photo_folders').delete().eq('id', folderId);
+
+  if (error) {
+    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`/admin/clients/${clientId}/gallery?success=folder_deleted`);
+}
+
+// Moves a single existing photo into a folder (or back to unsorted,
+// when folderId is empty) — how a photo that was already uploaded
+// gets sorted into an album after the fact.
+export async function movePhotoToFolderAction(formData: FormData) {
+  const photoId = formData.get('photoId') as string;
+  const clientId = formData.get('clientId') as string;
+  const folderId = (formData.get('folderId') as string) || null;
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('photos')
+    .update({ folder_id: folderId })
+    .eq('id', photoId);
+
+  if (error) {
+    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`/admin/clients/${clientId}/gallery?success=photo_moved`);
+}
+
+// Same idea as movePhotoToFolderAction, but for a checkbox-selected
+// batch — this is the "select 50 reception photos, drop them in one
+// folder in one move" path, rather than reassigning photos one at a
+// time. folderId empty/omitted sends the whole selection back to
+// unsorted.
+export async function moveManyPhotosToFolderAction(formData: FormData) {
+  const clientId = formData.get('clientId') as string;
+  const folderId = (formData.get('folderId') as string) || null;
+  const photoIds = formData.getAll('photoIds').map(String).filter(Boolean);
+
+  if (photoIds.length === 0) {
+    redirect(
+      `/admin/clients/${clientId}/gallery?error=${encodeURIComponent(
+        'Select at least one photo to move.'
+      )}`
+    );
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('photos')
+    .update({ folder_id: folderId })
+    .in('id', photoIds);
+
+  if (error) {
+    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(
+    `/admin/clients/${clientId}/gallery?success=photos_moved&count=${photoIds.length}`
+  );
+}

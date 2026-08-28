@@ -48,12 +48,14 @@ export async function processStagedPhoto({
   fileName,
   applyWatermark,
   sortOrder,
+  folderId,
 }: {
   galleryId: string;
   stagingPath: string;
   fileName: string;
   applyWatermark: boolean;
   sortOrder: number;
+  folderId?: string | null;
 }): Promise<{ success: boolean; error?: string; isWatermarked: boolean }> {
   const supabase = createAdminClient();
 
@@ -170,6 +172,7 @@ export async function processStagedPhoto({
     file_name: fileName,
     sort_order: sortOrder,
     is_watermarked: watermarkApplied,
+    folder_id: folderId || null,
   });
 
   // Staging file gets cleaned up regardless of outcome from here —
