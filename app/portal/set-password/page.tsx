@@ -81,7 +81,7 @@ export default function SetPasswordPage() {
 
   if (sessionError) {
     return (
-      <div style={{ maxWidth: 400, margin: '80px auto', padding: '0 16px' }}>
+      <div style={{ maxWidth: 400, margin: '48px auto', padding: '0 16px' }}>
         <h1>Link problem</h1>
         <p style={{ color: 'crimson' }}>{sessionError}</p>
       </div>
@@ -90,14 +90,14 @@ export default function SetPasswordPage() {
 
   if (!sessionReady) {
     return (
-      <div style={{ maxWidth: 400, margin: '80px auto', padding: '0 16px' }}>
+      <div style={{ maxWidth: 400, margin: '48px auto', padding: '0 16px' }}>
         <p>Setting things up…</p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '80px auto', padding: '0 16px' }}>
+    <div style={{ maxWidth: 400, margin: '48px auto', padding: '0 16px' }}>
       <h1>Welcome! Set up your account</h1>
       <p>Choose a password you'll use to log back into your gallery anytime.</p>
       <form onSubmit={handleSubmit}>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { ChevronLeft, ChevronRight, X, Images, Star, Folder } from 'lucide-react';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { DownloadButton } from '@/components/DownloadButton';
 import { DownloadAllButton } from '@/components/DownloadAllButton';
@@ -25,35 +25,66 @@ type Album = {
   photos: PhotoItem[];
 };
 
-// A single open-photo position: which album, which photo within it.
-// Keeping both means arrow navigation stays scoped to the album the
-// client opened — flipping through "Reception - Dancing" never spills
-// into "Ceremony" photos.
-type ViewerState = { albumIndex: number; photoIndex: number };
-
 export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; gallerySlug: string }) {
-  const [viewer, setViewer] = useState<ViewerState | null>(null);
+  // Sidebar entries: "All Photos" (every folder combined) and
+  // "Favorites" are always present regardless of what the admin has
+  // set up — Favorites in particular is client-driven, not
+  // admin-managed, so it starts empty and only fills in as the client
+  // taps the star on photos they like. The real, admin-created
+  // folders follow after those two.
+  const sidebarAlbums = useMemo<Album[]>(() => {
+    const allPhotos = albums.flatMap((a) => a.photos);
+    const favoritePhotos = allPhotos.filter((p) => p.is_favorite);
+    return [
+      { id: 'all', name: 'All Photos', slug: 'all', photos: allPhotos },
+      { id: 'favorites', name: 'Favorites', slug: 'favorites', photos: favoritePhotos },
+      ...albums,
+    ];
+  }, [albums]);
 
-  const close = useCallback(() => setViewer(null), []);
+  const [selectedId, setSelectedId] = useState('all');
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const selectedAlbum = sidebarAlbums.find((a) => a.id === selectedId) ?? sidebarAlbums[0];
+
+  // If the currently-viewed album's photo count shrinks out from
+  // under the open lightbox (e.g. unfavoriting the photo you're
+  // looking at while viewing Favorites), keep the index in bounds
+  // instead of pointing past the end of the array — or close the
+  // viewer entirely if nothing's left.
+  useEffect(() => {
+    if (openIndex === null) return;
+    if (selectedAlbum.photos.length === 0) {
+      setOpenIndex(null);
+    } else if (openIndex >= selectedAlbum.photos.length) {
+      setOpenIndex(selectedAlbum.photos.length - 1);
+    }
+  }, [selectedAlbum.photos.length, openIndex]);
+
+  function selectAlbum(id: string) {
+    setSelectedId(id);
+    setOpenIndex(null);
+  }
+
+  const close = useCallback(() => setOpenIndex(null), []);
 
   const step = useCallback(
     (direction: 1 | -1) => {
-      setViewer((current) => {
-        if (!current) return current;
-        const photos = albums[current.albumIndex]?.photos ?? [];
-        if (photos.length === 0) return current;
-        const nextIndex = (current.photoIndex + direction + photos.length) % photos.length;
-        return { albumIndex: current.albumIndex, photoIndex: nextIndex };
+      setOpenIndex((current) => {
+        if (current === null) return current;
+        const count = selectedAlbum.photos.length;
+        if (count === 0) return current;
+        return (current + direction + count) % count;
       });
     },
-    [albums]
+    [selectedAlbum.photos.length]
   );
 
   // Keyboard navigation only listens while the viewer is actually
   // open — otherwise arrow keys elsewhere on the page would hijack
   // scrolling or form inputs.
   useEffect(() => {
-    if (!viewer) return;
+    if (openIndex === null) return;
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'ArrowRight') step(1);
@@ -63,61 +94,99 @@ export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; galler
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [viewer, step, close]);
+  }, [openIndex, step, close]);
 
   // Lock page scroll behind the full-screen viewer so swiping/arrowing
   // through photos doesn't also scroll the gallery grid underneath.
   useEffect(() => {
-    if (!viewer) return;
+    if (openIndex === null) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [viewer]);
+  }, [openIndex]);
 
-  const activeAlbum = viewer ? albums[viewer.albumIndex] : null;
-  const activePhoto = activeAlbum ? activeAlbum.photos[viewer!.photoIndex] : null;
+  const activePhoto = openIndex !== null ? selectedAlbum.photos[openIndex] : null;
 
   return (
-    <>
-      {albums.map((album, albumIndex) => (
-        <div key={album.id} style={{ marginTop: 32 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 8,
-            }}
-          >
-            <h2 style={{ fontSize: 20 }}>
-              {album.name} <span style={{ color: '#999', fontSize: 14 }}>({album.photos.length})</span>
-            </h2>
-            {album.photos.length > 1 && (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <DownloadAllButton
-                  items={album.photos
-                    .filter((p) => p.downloadWebUrl)
-                    .map((p) => ({ url: p.downloadWebUrl as string, filename: p.downloadWebFilename }))}
-                  label="Download album (web size)"
-                  baseFilename={`${gallerySlug}-${album.slug}-web`}
-                />
-                <DownloadAllButton
-                  items={album.photos
-                    .filter((p) => p.downloadOriginalUrl)
-                    .map((p) => ({
-                      url: p.downloadOriginalUrl as string,
-                      filename: p.downloadOriginalFilename,
-                    }))}
-                  label="Download album (full resolution)"
-                  baseFilename={`${gallerySlug}-${album.slug}-full-res`}
-                />
-              </div>
-            )}
-          </div>
+    <div className="portal-gallery-shell">
+      <aside className="portal-sidebar">
+        <p className="portal-sidebar-heading">Albums</p>
+        <ul className="portal-sidebar-list">
+          {sidebarAlbums.map((album) => {
+            const Icon = album.id === 'all' ? Images : album.id === 'favorites' ? Star : Folder;
+            return (
+              <li key={album.id}>
+                <button
+                  type="button"
+                  onClick={() => selectAlbum(album.id)}
+                  className={`portal-sidebar-link${selectedId === album.id ? ' active' : ''}`}
+                >
+                  <Icon size={15} />
+                  <span
+                    style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {album.name}
+                  </span>
+                  <span className="portal-sidebar-count">{album.photos.length}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </aside>
 
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
+        >
+          <h2 style={{ fontSize: 20 }}>
+            {selectedAlbum.name}{' '}
+            <span style={{ color: '#999', fontSize: 14 }}>({selectedAlbum.photos.length})</span>
+          </h2>
+          {selectedAlbum.photos.length > 1 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <DownloadAllButton
+                icon="web"
+                items={selectedAlbum.photos
+                  .filter((p) => p.downloadWebUrl)
+                  .map((p) => ({ url: p.downloadWebUrl as string, filename: p.downloadWebFilename }))}
+                label="Download (web size)"
+                baseFilename={`${gallerySlug}-${selectedAlbum.slug}-web`}
+              />
+              <DownloadAllButton
+                icon="full"
+                items={selectedAlbum.photos
+                  .filter((p) => p.downloadOriginalUrl)
+                  .map((p) => ({
+                    url: p.downloadOriginalUrl as string,
+                    filename: p.downloadOriginalFilename,
+                  }))}
+                label="Download (full resolution)"
+                baseFilename={`${gallerySlug}-${selectedAlbum.slug}-full-res`}
+              />
+            </div>
+          )}
+        </div>
+
+        {selectedAlbum.photos.length === 0 ? (
+          <p style={{ color: '#888', marginTop: 24 }}>
+            {selectedAlbum.id === 'favorites'
+              ? 'No favorites yet — tap the star on any photo to add it here.'
+              : 'No photos here yet.'}
+          </p>
+        ) : (
           <div
             style={{
               display: 'grid',
@@ -126,12 +195,12 @@ export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; galler
               marginTop: 16,
             }}
           >
-            {album.photos.map((photo, photoIndex) =>
+            {selectedAlbum.photos.map((photo, photoIndex) =>
               photo.gridUrl ? (
                 <div key={photo.id} style={{ position: 'relative' }}>
                   <button
                     type="button"
-                    onClick={() => setViewer({ albumIndex, photoIndex })}
+                    onClick={() => setOpenIndex(photoIndex)}
                     style={{
                       display: 'block',
                       width: '100%',
@@ -160,6 +229,7 @@ export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; galler
                   <div style={{ position: 'absolute', bottom: 6, left: 6, display: 'flex', gap: 4 }}>
                     {photo.downloadWebUrl && (
                       <DownloadButton
+                        icon="web"
                         url={photo.downloadWebUrl}
                         filename={photo.downloadWebFilename}
                         label="Web"
@@ -167,6 +237,7 @@ export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; galler
                     )}
                     {photo.downloadOriginalUrl && (
                       <DownloadButton
+                        icon="full"
                         url={photo.downloadOriginalUrl}
                         filename={photo.downloadOriginalFilename}
                         label="Full res"
@@ -177,14 +248,14 @@ export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; galler
               ) : null
             )}
           </div>
-        </div>
-      ))}
+        )}
+      </div>
 
-      {activeAlbum && activePhoto && (
+      {activePhoto && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`Photo viewer — ${activeAlbum.name}`}
+          aria-label={`Photo viewer — ${selectedAlbum.name}`}
           onClick={close}
           style={{
             position: 'fixed',
@@ -209,7 +280,7 @@ export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; galler
             }}
           >
             <span>
-              {activeAlbum.name} — {viewer!.photoIndex + 1} of {activeAlbum.photos.length}
+              {selectedAlbum.name} — {openIndex! + 1} of {selectedAlbum.photos.length}
             </span>
             <button
               type="button"
@@ -244,7 +315,7 @@ export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; galler
               minHeight: 0,
             }}
           >
-            {activeAlbum.photos.length > 1 && (
+            {selectedAlbum.photos.length > 1 && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -287,7 +358,7 @@ export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; galler
               </div>
             </div>
 
-            {activeAlbum.photos.length > 1 && (
+            {selectedAlbum.photos.length > 1 && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -314,6 +385,7 @@ export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; galler
           >
             {activePhoto.downloadWebUrl && (
               <DownloadButton
+                icon="web"
                 url={activePhoto.downloadWebUrl}
                 filename={activePhoto.downloadWebFilename}
                 label="Download web size"
@@ -321,6 +393,7 @@ export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; galler
             )}
             {activePhoto.downloadOriginalUrl && (
               <DownloadButton
+                icon="full"
                 url={activePhoto.downloadOriginalUrl}
                 filename={activePhoto.downloadOriginalFilename}
                 label="Download full resolution"
@@ -329,7 +402,7 @@ export function GalleryViewer({ albums, gallerySlug }: { albums: Album[]; galler
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 

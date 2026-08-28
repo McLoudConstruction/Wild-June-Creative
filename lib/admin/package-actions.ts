@@ -14,7 +14,7 @@ export async function createPackageAction(formData: FormData) {
 
   if (!name || !Number.isFinite(priceDollars) || priceDollars <= 0) {
     redirect(
-      `/admin/settings/packages?error=${encodeURIComponent('Name and a valid price are required.')}`
+      `/admin/sales/packages?error=${encodeURIComponent('Name and a valid price are required.')}`
     );
   }
 
@@ -29,10 +29,10 @@ export async function createPackageAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/admin/settings/packages?error=${encodeURIComponent(error.message)}`);
+    redirect(`/admin/sales/packages?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect('/admin/settings/packages?success=1');
+  redirect('/admin/sales/packages?success=1');
 }
 
 export async function togglePackageActiveAction(formData: FormData) {
@@ -46,8 +46,8 @@ export async function togglePackageActiveAction(formData: FormData) {
     .eq('id', packageId);
 
   if (error) {
-    redirect(`/admin/settings/packages?error=${encodeURIComponent(error.message)}`);
+    redirect(`/admin/sales/packages?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect('/admin/settings/packages?success=1');
+  redirect('/admin/sales/packages?success=1');
 }

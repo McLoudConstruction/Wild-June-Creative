@@ -1,14 +1,11 @@
 import Link from 'next/link';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendInviteAction } from '@/lib/admin/actions';
-import { DeleteClientButton } from '@/components/DeleteClientButton';
+import { ClientRow, type ClientStatus } from '@/components/admin/ClientRow';
 
 export const dynamic = 'force-dynamic';
 
-type ClientStatus = 'not_invited' | 'pending' | 'active';
-
-type ClientRow = {
+type ClientListItem = {
   id: string;
   full_name: string;
   email: string;
@@ -18,7 +15,7 @@ type ClientRow = {
   status: ClientStatus;
 };
 
-async function getClientsWithStatus(): Promise<ClientRow[]> {
+async function getClientsWithStatus(): Promise<ClientListItem[]> {
   // force-dynamic on its own only guarantees the *page* isn't
   // statically cached — it doesn't necessarily stop underlying data
   // calls made by third-party clients like Supabase's SDK from being
@@ -39,7 +36,7 @@ async function getClientsWithStatus(): Promise<ClientRow[]> {
   }
 
   return Promise.all(
-    clients.map(async (client): Promise<ClientRow> => {
+    clients.map(async (client): Promise<ClientListItem> => {
       let status: ClientStatus = 'not_invited';
 
       if (client.auth_user_id) {
@@ -58,12 +55,6 @@ async function getClientsWithStatus(): Promise<ClientRow[]> {
     })
   );
 }
-
-const statusStyles: Record<ClientStatus, { label: string; color: string }> = {
-  not_invited: { label: 'Not invited', color: '#888' },
-  pending: { label: 'Invited — awaiting setup', color: '#b8860b' },
-  active: { label: 'Active', color: 'green' },
-};
 
 export default async function AdminDashboard({
   searchParams,
@@ -114,43 +105,19 @@ export default async function AdminDashboard({
               <th style={{ padding: 8 }}>Name</th>
               <th style={{ padding: 8 }}>Email</th>
               <th style={{ padding: 8 }}>Status</th>
-              <th style={{ padding: 8 }} colSpan={3} />
+              <th style={{ padding: 8 }} colSpan={2} />
             </tr>
           </thead>
           <tbody>
-            {clients.map((client) => {
-              const status = statusStyles[client.status];
-              return (
-                <tr key={client.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: 8 }}>
-                    <Link href={`/admin/clients/${client.id}/gallery`}>{client.full_name}</Link>
-                  </td>
-                  <td style={{ padding: 8 }}>{client.email}</td>
-                  <td style={{ padding: 8, color: status.color }}>{status.label}</td>
-                  <td style={{ padding: 8 }}>
-                    {client.status !== 'active' && (
-                      <form action={sendInviteAction}>
-                        <input type="hidden" name="clientId" value={client.id} />
-                        <button type="submit" style={{ padding: '6px 12px' }}>
-                          {client.status === 'pending' ? 'Resend invite' : 'Send invite'}
-                        </button>
-                      </form>
-                    )}
-                  </td>
-                  <td style={{ padding: 8 }}>
-                    <Link
-                      href={`/admin/clients/${client.id}/gallery`}
-                      style={{ padding: '6px 12px' }}
-                    >
-                      View
-                    </Link>
-                  </td>
-                  <td style={{ padding: 8 }}>
-                    <DeleteClientButton clientId={client.id} />
-                  </td>
-                </tr>
-              );
-            })}
+            {clients.map((client) => (
+              <ClientRow
+                key={client.id}
+                id={client.id}
+                fullName={client.full_name}
+                email={client.email}
+                status={client.status}
+              />
+            ))}
           </tbody>
         </table>
       )}

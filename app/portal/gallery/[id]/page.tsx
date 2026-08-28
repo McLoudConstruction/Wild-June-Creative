@@ -1,7 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { DownloadAllButton } from '@/components/DownloadAllButton';
 import { GalleryViewer } from '@/components/GalleryViewer';
 
 export const dynamic = 'force-dynamic';
@@ -36,7 +35,7 @@ export default async function GalleryPage({ params }: { params: { id: string } }
   // once their access window closes.
   if (gallery.is_expired) {
     return (
-      <div style={{ maxWidth: 500, margin: '120px auto', padding: '0 16px', textAlign: 'center' }}>
+      <div style={{ maxWidth: 500, margin: '64px auto', padding: '0 16px', textAlign: 'center' }}>
         <h1>This gallery has expired</h1>
         <p style={{ color: '#666' }}>
           This gallery is no longer available online. If you'd like it reactivated or have any
@@ -127,36 +126,14 @@ export default async function GalleryPage({ params }: { params: { id: string } }
   ].filter((album) => album.photos.length > 0);
 
   return (
-    <div style={{ maxWidth: 1000, margin: '60px auto', padding: '0 16px' }}>
+    <div style={{ maxWidth: 1180, margin: '40px auto', padding: '0 32px' }}>
       <h1>{gallery.title || 'Your gallery'}</h1>
       {gallery.expires_at && (
         <p style={{ color: '#666' }}>
           Available until {new Date(gallery.expires_at).toLocaleDateString()} — tap the star to
           favorite a photo, tap a photo to view it full size, or use the download buttons on each
-          photo (or below) to save it.
+          photo (or above the grid) to save it.
         </p>
-      )}
-
-      {photosWithUrls.length > 0 && (
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
-          <DownloadAllButton
-            items={photosWithUrls
-              .filter((p) => p.downloadWebUrl)
-              .map((p) => ({ url: p.downloadWebUrl as string, filename: p.downloadWebFilename }))}
-            label="Download all (web size)"
-            baseFilename={`${gallerySlug}-web`}
-          />
-          <DownloadAllButton
-            items={photosWithUrls
-              .filter((p) => p.downloadOriginalUrl)
-              .map((p) => ({
-                url: p.downloadOriginalUrl as string,
-                filename: p.downloadOriginalFilename,
-              }))}
-            label="Download all (full resolution)"
-            baseFilename={`${gallerySlug}-full-res`}
-          />
-        </div>
       )}
 
       {photosWithUrls.length === 0 ? (
@@ -164,7 +141,9 @@ export default async function GalleryPage({ params }: { params: { id: string } }
           Photos haven't been added to this gallery yet — check back soon.
         </p>
       ) : (
-        <GalleryViewer albums={albums} gallerySlug={gallerySlug} />
+        <div style={{ marginTop: 24 }}>
+          <GalleryViewer albums={albums} gallerySlug={gallerySlug} />
+        </div>
       )}
     </div>
   );

@@ -1,5 +1,4 @@
 import { unstable_noStore as noStore } from 'next/cache';
-import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { updateWatermarkSettingsAction } from '@/lib/admin/watermark-actions';
 
@@ -29,9 +28,6 @@ export default async function WatermarkSettingsPage({
 
   return (
     <div style={{ maxWidth: 500 }}>
-      <Link href="/admin/settings" style={{ fontSize: 13, color: '#666' }}>
-        ← Settings
-      </Link>
       <h1>Watermark settings</h1>
       <p style={{ color: '#666' }}>
         This controls what your watermark looks like and where it sits — whether it actually gets

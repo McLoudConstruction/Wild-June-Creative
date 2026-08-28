@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { Header } from '@/components/site/Header';
 
 // Prevents this page from being statically prerendered at build time.
 // It's a login form — there's nothing to prerender anyway, and static
@@ -72,46 +73,52 @@ export default function LoginPage() {
 
   if (checkingForInvite) {
     return (
-      <div style={{ maxWidth: 400, margin: '80px auto', padding: '0 16px' }}>
-        <p>Checking your link…</p>
-      </div>
+      <>
+        <Header />
+        <div style={{ maxWidth: 400, margin: '48px auto', padding: '0 16px' }}>
+          <p>Checking your link…</p>
+        </div>
+      </>
     );
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '80px auto', padding: '0 16px' }}>
-      <h1>Client login</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: '100%', padding: 8 }}
-          />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: '100%', padding: 8 }}
-          />
-        </div>
-        {error && <p style={{ color: 'crimson' }}>{error}</p>}
-        <button type="submit" disabled={loading} style={{ padding: '8px 16px' }}>
-          {loading ? 'Logging in...' : 'Log in'}
-        </button>
-      </form>
-      <p style={{ marginTop: 16, fontSize: 14 }}>
-        New clients receive a one-time invite link by email — there's no self-signup here.
-      </p>
-    </div>
+    <>
+      <Header />
+      <div style={{ maxWidth: 400, margin: '48px auto', padding: '0 16px' }}>
+        <h1>Client login</h1>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 12 }}>
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              style={{ width: '100%', padding: 8 }}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              style={{ width: '100%', padding: 8 }}
+            />
+          </div>
+          {error && <p style={{ color: 'crimson' }}>{error}</p>}
+          <button type="submit" disabled={loading} style={{ padding: '8px 16px' }}>
+            {loading ? 'Logging in...' : 'Log in'}
+          </button>
+        </form>
+        <p style={{ marginTop: 16, fontSize: 14 }}>
+          New clients receive a one-time invite link by email — there's no self-signup here.
+        </p>
+      </div>
+    </>
   );
 }

@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { Monitor, Printer } from 'lucide-react';
+
+const ICONS = { web: Monitor, full: Printer };
 
 // A plain <a download href="..."> doesn't force a real download when
 // the URL is cross-origin (which signed Supabase Storage URLs always
@@ -12,12 +15,17 @@ export function DownloadButton({
   url,
   filename,
   label,
+  icon,
 }: {
   url: string;
   filename: string;
   label: string;
+  // 'web' (a monitor — this version is sized for screens) or 'full'
+  // (a printer — this version is full quality, sized for printing).
+  icon?: 'web' | 'full';
 }) {
   const [downloading, setDownloading] = useState(false);
+  const Icon = icon ? ICONS[icon] : null;
 
   async function handleDownload() {
     setDownloading(true);
@@ -44,6 +52,9 @@ export function DownloadButton({
       onClick={handleDownload}
       disabled={downloading}
       style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
         fontSize: 11,
         padding: '4px 9px',
         background: 'rgba(255,255,255,0.92)',
@@ -52,7 +63,12 @@ export function DownloadButton({
         cursor: downloading ? 'default' : 'pointer',
       }}
     >
-      {downloading ? '…' : label}
+      {downloading ? '…' : (
+        <>
+          {Icon && <Icon size={13} />}
+          {label}
+        </>
+      )}
     </button>
   );
 }

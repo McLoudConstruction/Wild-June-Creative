@@ -50,7 +50,7 @@ export default async function PortalPage({
     .order('created_at', { ascending: false });
 
   return (
-    <div style={{ maxWidth: 700, margin: '80px auto', padding: '0 16px' }}>
+    <div style={{ maxWidth: 700, margin: '48px auto', padding: '0 16px' }}>
       <h1>Welcome{client?.full_name ? `, ${client.full_name}` : ''}!</h1>
       <p style={{ color: '#666' }}>Logged in as {client?.email ?? user.email}</p>
 

@@ -18,8 +18,7 @@ export default function SalesPage() {
 
   return (
     <div>
-      <h1>Sales</h1>
-      <p style={{ color: '#666', maxWidth: 560 }}>
+      <p style={{ color: '#666', maxWidth: 560, marginTop: 20 }}>
         A booking calendar will live here — once online booking is built, clients will be able to
         see your availability and reserve a session date directly. For now, this is a preview of
         the layout.

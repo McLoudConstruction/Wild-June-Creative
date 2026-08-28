@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import JSZip from 'jszip';
+import { Monitor, Printer } from 'lucide-react';
+
+const ICONS = { web: Monitor, full: Printer };
 
 // Once a zip being built would cross this size, it gets sealed and
 // downloaded immediately, and a fresh zip starts for the rest. This
@@ -18,12 +21,17 @@ export function DownloadAllButton({
   items,
   label,
   baseFilename = 'gallery',
+  icon,
 }: {
   items: Item[];
   label: string;
   baseFilename?: string;
+  // 'web' (a monitor — sized for screens) or 'full' (a printer —
+  // full quality, sized for printing).
+  icon?: 'web' | 'full';
 }) {
   const [status, setStatus] = useState<string | null>(null);
+  const Icon = icon ? ICONS[icon] : null;
 
   async function downloadZipPart(zip: JSZip, partNumber: number) {
     const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
@@ -91,9 +99,20 @@ export function DownloadAllButton({
     <button
       onClick={handleDownloadAll}
       disabled={!!status || items.length === 0}
-      style={{ padding: '10px 20px', fontSize: 13 }}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 7,
+        padding: '10px 20px',
+        fontSize: 13,
+      }}
     >
-      {status ?? label}
+      {status ?? (
+        <>
+          {Icon && <Icon size={15} />}
+          {label}
+        </>
+      )}
     </button>
   );
 }
