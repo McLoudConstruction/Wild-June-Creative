@@ -50,11 +50,12 @@ export async function deletePhotoAction(formData: FormData) {
   const photoId = formData.get('photoId') as string;
   const storagePath = formData.get('storagePath') as string;
   const thumbnailPath = formData.get('thumbnailPath') as string | null;
+  const originalPath = formData.get('originalPath') as string | null;
   const clientId = formData.get('clientId') as string;
 
   const supabase = createAdminClient();
 
-  const pathsToRemove = [storagePath, thumbnailPath].filter(Boolean) as string[];
+  const pathsToRemove = [storagePath, thumbnailPath, originalPath].filter(Boolean) as string[];
   if (pathsToRemove.length > 0) {
     await supabase.storage.from('galleries').remove(pathsToRemove);
   }

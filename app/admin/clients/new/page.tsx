@@ -1,4 +1,5 @@
 import { createClientRecord } from '@/lib/admin/actions';
+import { BackToDashboard } from '@/components/admin/BackToDashboard';
 
 // Creates a client record only. The invite itself is sent separately
 // from the /admin dashboard, whenever it's actually time — not
@@ -12,6 +13,7 @@ export default function NewClientPage({
 }) {
   return (
     <div style={{ maxWidth: 480, margin: '80px auto', padding: '0 16px' }}>
+      <BackToDashboard />
       <h1>Add a new client</h1>
       <p style={{ color: '#666' }}>
         This just creates the record. You'll send their portal invite separately, from the

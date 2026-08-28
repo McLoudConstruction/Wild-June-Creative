@@ -1,0 +1,11 @@
+-- Previously, only a compressed "web" version (~2400px) and a small
+-- thumbnail were kept — the original upload was discarded once those
+-- were generated. To offer clients a genuine full-resolution download
+-- option, a third, high-quality version now gets kept permanently.
+-- It's re-encoded as a high-quality JPEG (quality 95) rather than
+-- stored in whatever raw format the camera produced — same pixel
+-- dimensions as the original, just a more reasonable file size than a
+-- literal camera file, and if a watermark was applied, it's baked
+-- into this version too (a "full resolution" download shouldn't be a
+-- backdoor around the watermark).
+alter table public.photos add column original_path text;

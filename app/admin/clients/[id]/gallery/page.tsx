@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getWatermarkSettings } from '@/lib/admin/watermark';
 import { createGalleryAction, deletePhotoAction } from '@/lib/admin/gallery-actions';
 import { GalleryUploader } from '@/components/GalleryUploader';
+import { BackToDashboard } from '@/components/admin/BackToDashboard';
 
 export const dynamic = 'force-dynamic';
 // Gives the per-photo processing action (compress + watermark +
@@ -72,6 +73,7 @@ export default async function ClientGalleryPage({
 
   return (
     <div style={{ maxWidth: 900, margin: '60px auto', padding: '0 16px' }}>
+      <BackToDashboard />
       <h1>Gallery — {client.full_name}</h1>
       <p style={{ color: '#666' }}>{client.email}</p>
 
@@ -169,6 +171,7 @@ export default async function ClientGalleryPage({
                     <input type="hidden" name="photoId" value={photo.id} />
                     <input type="hidden" name="storagePath" value={photo.storage_path} />
                     <input type="hidden" name="thumbnailPath" value={photo.thumbnail_path ?? ''} />
+                    <input type="hidden" name="originalPath" value={photo.original_path ?? ''} />
                     <input type="hidden" name="clientId" value={client.id} />
                     <button
                       type="submit"

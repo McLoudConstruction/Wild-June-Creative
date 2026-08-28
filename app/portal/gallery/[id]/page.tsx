@@ -2,6 +2,8 @@ import { notFound, redirect } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { FavoriteButton } from '@/components/FavoriteButton';
+import { DownloadButton } from '@/components/DownloadButton';
+import { DownloadAllButton } from '@/components/DownloadAllButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +66,12 @@ export default async function GalleryPage({ params }: { params: { id: string } }
         ? await supabase.storage.from('galleries').createSignedUrl(photo.thumbnail_path, 3600)
         : { data: null };
 
+      const { data: originalSigned } = photo.original_path
+        ? await supabase.storage.from('galleries').createSignedUrl(photo.original_path, 3600)
+        : { data: null };
+
+      const baseName = photo.file_name.replace(/\.[^.]+$/, '');
+
       return {
         ...photo,
         fullUrl: fullSigned?.signedUrl ?? null,
@@ -71,9 +79,22 @@ export default async function GalleryPage({ params }: { params: { id: string } }
         // missing for some reason (e.g. it failed to generate at
         // upload time) — just falls back to the full image.
         gridUrl: thumbSigned?.signedUrl ?? fullSigned?.signedUrl ?? null,
+        // Full resolution falls back to the web version if an
+        // original somehow wasn't generated (e.g. photos uploaded
+        // before this feature existed) — still better than a dead
+        // button.
+        downloadWebUrl: fullSigned?.signedUrl ?? null,
+        downloadWebFilename: `${baseName}-web.jpg`,
+        downloadOriginalUrl: originalSigned?.signedUrl ?? fullSigned?.signedUrl ?? null,
+        downloadOriginalFilename: `${baseName}-full-res.jpg`,
       };
     })
   );
+
+  const gallerySlug = (gallery.title || 'gallery')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
 
   return (
     <div style={{ maxWidth: 1000, margin: '60px auto', padding: '0 16px' }}>
@@ -81,8 +102,31 @@ export default async function GalleryPage({ params }: { params: { id: string } }
       {gallery.expires_at && (
         <p style={{ color: '#666' }}>
           Available until {new Date(gallery.expires_at).toLocaleDateString()} — tap the star to
-          favorite a photo, tap a photo to view it full size.
+          favorite a photo, tap a photo to view it full size, or use the download buttons on each
+          photo (or below) to save it.
         </p>
+      )}
+
+      {photosWithUrls.length > 0 && (
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
+          <DownloadAllButton
+            items={photosWithUrls
+              .filter((p) => p.downloadWebUrl)
+              .map((p) => ({ url: p.downloadWebUrl as string, filename: p.downloadWebFilename }))}
+            label="Download all (web size)"
+            baseFilename={`${gallerySlug}-web`}
+          />
+          <DownloadAllButton
+            items={photosWithUrls
+              .filter((p) => p.downloadOriginalUrl)
+              .map((p) => ({
+                url: p.downloadOriginalUrl as string,
+                filename: p.downloadOriginalFilename,
+              }))}
+            label="Download all (full resolution)"
+            baseFilename={`${gallerySlug}-full-res`}
+          />
+        </div>
       )}
 
       {photosWithUrls.length === 0 ? (
@@ -117,6 +161,30 @@ export default async function GalleryPage({ params }: { params: { id: string } }
                   />
                 </a>
                 <FavoriteButton photoId={photo.id} initialFavorite={photo.is_favorite} />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 6,
+                    left: 6,
+                    display: 'flex',
+                    gap: 4,
+                  }}
+                >
+                  {photo.downloadWebUrl && (
+                    <DownloadButton
+                      url={photo.downloadWebUrl}
+                      filename={photo.downloadWebFilename}
+                      label="Web"
+                    />
+                  )}
+                  {photo.downloadOriginalUrl && (
+                    <DownloadButton
+                      url={photo.downloadOriginalUrl}
+                      filename={photo.downloadOriginalFilename}
+                      label="Full res"
+                    />
+                  )}
+                </div>
               </div>
             ) : null
           )}

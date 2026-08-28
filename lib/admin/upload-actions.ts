@@ -8,6 +8,7 @@ const MAIN_MAX_DIMENSION = 2400;
 const MAIN_QUALITY = 85;
 const THUMBNAIL_MAX_DIMENSION = 500;
 const THUMBNAIL_QUALITY = 80;
+const ORIGINAL_QUALITY = 95;
 
 // Step 1 — called once per file, before any bytes move. Returns a
 // short-lived signed upload token that lets the browser push the raw
@@ -94,8 +95,20 @@ export async function processStagedPhoto({
 
   let mainBuffer: Buffer;
   let thumbnailBuffer: Buffer;
+  let originalQualityBuffer: Buffer;
 
   try {
+    // Full resolution — same pixel dimensions as what was uploaded
+    // (no resize), re-encoded at near-lossless quality. This is what
+    // "full resolution" download in the portal actually serves.
+    // Built from sourceBuffer (post-watermark, if one was applied) so
+    // a watermarked photo can't be bypassed just by choosing the
+    // higher-quality download option.
+    originalQualityBuffer = await sharp(sourceBuffer)
+      .rotate()
+      .jpeg({ quality: ORIGINAL_QUALITY })
+      .toBuffer();
+
     mainBuffer = await sharp(sourceBuffer)
       .rotate()
       .resize({
@@ -130,6 +143,7 @@ export async function processStagedPhoto({
   const pathPrefix = `${galleryId}/${Date.now()}-${sortOrder}-${safeBase}`;
   const mainPath = `${pathPrefix}.jpg`;
   const thumbnailPath = `${pathPrefix}-thumb.jpg`;
+  const originalPath = `${pathPrefix}-original.jpg`;
 
   const { error: mainUploadError } = await supabase.storage
     .from('galleries')
@@ -144,10 +158,15 @@ export async function processStagedPhoto({
     .from('galleries')
     .upload(thumbnailPath, thumbnailBuffer, { contentType: 'image/jpeg' });
 
+  const { error: originalUploadError } = await supabase.storage
+    .from('galleries')
+    .upload(originalPath, originalQualityBuffer, { contentType: 'image/jpeg' });
+
   const { error: insertError } = await supabase.from('photos').insert({
     gallery_id: galleryId,
     storage_path: mainPath,
     thumbnail_path: thumbUploadError ? null : thumbnailPath,
+    original_path: originalUploadError ? null : originalPath,
     file_name: fileName,
     sort_order: sortOrder,
     is_watermarked: watermarkApplied,

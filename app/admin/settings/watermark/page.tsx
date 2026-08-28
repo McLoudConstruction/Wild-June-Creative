@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { updateWatermarkSettingsAction } from '@/lib/admin/watermark-actions';
+import { BackToDashboard } from '@/components/admin/BackToDashboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,7 @@ export default async function WatermarkSettingsPage({
 
   return (
     <div style={{ maxWidth: 500, margin: '60px auto', padding: '0 16px' }}>
+      <BackToDashboard />
       <h1>Watermark settings</h1>
       <p style={{ color: '#666' }}>
         This controls what your watermark looks like and where it sits — whether it actually gets
