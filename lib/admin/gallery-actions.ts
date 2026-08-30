@@ -106,6 +106,42 @@ export async function createFolderAction(formData: FormData) {
   redirect(`/admin/clients/${clientId}/gallery?success=folder_created`);
 }
 
+// Same folder-creation logic as createFolderAction, but called
+// directly from a client component (PhotoGrid's bulk "Move to:"
+// dropdown) instead of as a <form action>. That means it returns a
+// result object instead of redirecting, so the caller can select the
+// new folder immediately and keep the current photo selection intact
+// rather than losing it to a full page navigation.
+export async function createFolderInlineAction(
+  galleryId: string,
+  name: string
+): Promise<{ id: string; name: string } | { error: string }> {
+  const trimmed = name.trim();
+
+  if (!galleryId || !trimmed) {
+    return { error: 'Folder name is required.' };
+  }
+
+  const supabase = createAdminClient();
+
+  const { count } = await supabase
+    .from('photo_folders')
+    .select('id', { count: 'exact', head: true })
+    .eq('gallery_id', galleryId);
+
+  const { data, error } = await supabase
+    .from('photo_folders')
+    .insert({ gallery_id: galleryId, name: trimmed, sort_order: count ?? 0 })
+    .select('id, name')
+    .single();
+
+  if (error || !data) {
+    return { error: error?.message ?? 'Could not create folder.' };
+  }
+
+  return { id: data.id, name: data.name };
+}
+
 export async function renameFolderAction(formData: FormData) {
   const folderId = formData.get('folderId') as string;
   const clientId = formData.get('clientId') as string;

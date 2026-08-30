@@ -1,12 +1,19 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Trash2 } from 'lucide-react';
 import {
   deletePhotoAction,
   moveManyPhotosToFolderAction,
+  createFolderInlineAction,
 } from '@/lib/admin/gallery-actions';
 import { PhotoFolderSelect } from '@/components/admin/PhotoFolderSelect';
+
+// Sentinel value for the "+ Create new folder…" option in the bulk
+// move dropdown. Never a real folder id, so it's safe to compare
+// against directly.
+const CREATE_NEW_VALUE = '__create_new__';
 
 type Photo = {
   id: string;
@@ -25,11 +32,15 @@ export function PhotoGrid({
   photos,
   folders,
   clientId,
+  galleryId,
   filterFolderId,
 }: {
   photos: Photo[];
   folders: Folder[];
   clientId: string;
+  // Needed so a folder created from this component's dropdown can be
+  // attached to the right gallery.
+  galleryId: string;
   // When provided, shows only the matching folder's photos as a single
   // section instead of the full folder-by-folder breakdown — this is
   // what powers clicking a specific folder in the Gallery sidebar.
@@ -37,9 +48,51 @@ export function PhotoGrid({
   // every folder grouped, which is the "All Photos" view.
   filterFolderId?: string | 'unsorted';
 }) {
+  const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkFolderId, setBulkFolderId] = useState('');
   const [isPending, startTransition] = useTransition();
+
+  // Folders as known to this component. Starts from the server-provided
+  // list and gets a new entry appended the moment one is created inline,
+  // so the dropdown (and each photo's own folder select) can offer the
+  // new folder immediately — without waiting on a full page reload,
+  // which would otherwise also wipe the current selection.
+  const [localFolders, setLocalFolders] = useState<Folder[]>(folders);
+  useEffect(() => {
+    setLocalFolders(folders);
+  }, [folders]);
+
+  const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [isSavingNewFolder, setIsSavingNewFolder] = useState(false);
+  const [newFolderError, setNewFolderError] = useState<string | null>(null);
+
+  async function handleCreateFolder() {
+    const trimmed = newFolderName.trim();
+    if (!trimmed || isSavingNewFolder) return;
+
+    setIsSavingNewFolder(true);
+    setNewFolderError(null);
+
+    const result = await createFolderInlineAction(galleryId, trimmed);
+
+    setIsSavingNewFolder(false);
+
+    if ('error' in result) {
+      setNewFolderError(result.error);
+      return;
+    }
+
+    setLocalFolders((current) => [...current, { id: result.id, name: result.name }]);
+    setBulkFolderId(result.id);
+    setIsCreatingNewFolder(false);
+    setNewFolderName('');
+    // Picks up the new folder in the sidebar's folder list and counts
+    // on next navigation, without disturbing the in-progress selection
+    // on this page.
+    router.refresh();
+  }
 
   // Same grouping as before: one section per folder, plus a trailing
   // "Unsorted" bucket for anything without a folder_id — hidden
@@ -56,11 +109,11 @@ export function PhotoGrid({
       const name =
         filterFolderId === 'unsorted'
           ? 'Unsorted'
-          : folders.find((f) => f.id === filterFolderId)?.name ?? 'Folder';
+          : localFolders.find((f) => f.id === filterFolderId)?.name ?? 'Folder';
       return [{ id: filterFolderId, name, photos: matching }];
     }
 
-    const named = folders.map((folder) => ({
+    const named = localFolders.map((folder) => ({
       id: folder.id,
       name: folder.name,
       photos: photos.filter((p) => p.folder_id === folder.id),
@@ -71,7 +124,7 @@ export function PhotoGrid({
       photos: photos.filter((p) => !p.folder_id),
     };
     return unsorted.photos.length > 0 ? [...named, unsorted] : named;
-  }, [photos, folders, filterFolderId]);
+  }, [photos, localFolders, filterFolderId]);
 
   function toggle(photoId: string) {
     setSelectedIds((current) => {
@@ -126,22 +179,76 @@ export function PhotoGrid({
         >
           <strong style={{ fontSize: 13 }}>{selectedIds.size} selected</strong>
           <select
-            value={bulkFolderId}
-            onChange={(e) => setBulkFolderId(e.target.value)}
+            value={isCreatingNewFolder ? CREATE_NEW_VALUE : bulkFolderId}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === CREATE_NEW_VALUE) {
+                setIsCreatingNewFolder(true);
+                setNewFolderError(null);
+              } else {
+                setIsCreatingNewFolder(false);
+                setBulkFolderId(value);
+              }
+            }}
             disabled={isPending}
             style={{ padding: 6, fontSize: 13 }}
           >
             <option value="">Move to: Unsorted</option>
-            {folders.map((folder) => (
+            {localFolders.map((folder) => (
               <option key={folder.id} value={folder.id}>
                 Move to: {folder.name}
               </option>
             ))}
+            <option value={CREATE_NEW_VALUE}>+ Create new folder…</option>
           </select>
+
+          {isCreatingNewFolder && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                type="text"
+                autoFocus
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleCreateFolder();
+                  }
+                }}
+                placeholder="New folder name"
+                disabled={isSavingNewFolder}
+                style={{ padding: 6, fontSize: 13 }}
+              />
+              <button
+                type="button"
+                onClick={handleCreateFolder}
+                disabled={isSavingNewFolder || !newFolderName.trim()}
+                style={{ padding: '6px 10px', fontSize: 13 }}
+              >
+                {isSavingNewFolder ? 'Creating…' : 'Create'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreatingNewFolder(false);
+                  setNewFolderName('');
+                  setNewFolderError(null);
+                }}
+                disabled={isSavingNewFolder}
+                style={{ padding: '6px 10px', fontSize: 13, color: '#666' }}
+              >
+                Cancel
+              </button>
+              {newFolderError && (
+                <span style={{ color: 'crimson', fontSize: 12 }}>{newFolderError}</span>
+              )}
+            </div>
+          )}
+
           <button
             type="button"
             onClick={handleBulkMove}
-            disabled={isPending}
+            disabled={isPending || isCreatingNewFolder}
             style={{ padding: '6px 14px', fontSize: 13 }}
           >
             {isPending ? 'Moving…' : 'Move selected'}
@@ -312,12 +419,12 @@ export function PhotoGrid({
                         </button>
                       </form>
 
-                      {folders.length > 0 && (
+                      {localFolders.length > 0 && (
                         <PhotoFolderSelect
                           photoId={photo.id}
                           clientId={clientId}
                           currentFolderId={photo.folder_id}
-                          folders={folders}
+                          folders={localFolders}
                         />
                       )}
                     </div>

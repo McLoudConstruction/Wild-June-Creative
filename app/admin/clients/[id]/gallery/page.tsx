@@ -244,6 +244,7 @@ export default async function ClientGalleryPage({
                 photos={photosWithUrls}
                 folders={folderList}
                 clientId={client.id}
+                galleryId={gallery.id}
                 filterFolderId={activeFolder}
               />
             )}
