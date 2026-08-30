@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { LogOut } from 'lucide-react';
 import { NAV_LINKS } from '@/lib/site/nav';
 import { SocialLinks } from './SocialLinks';
 import { createClient } from '@/lib/supabase/server';
@@ -55,21 +56,23 @@ export async function Header() {
             </li>
             {user && (
               <li>
-                <form action={signOutAction} style={{ margin: 0 }}>
+                <form action={signOutAction} style={{ margin: 0, display: 'flex' }}>
                   <button
                     type="submit"
-                    className="nav-link"
+                    aria-label="Log out"
+                    title="Log out"
                     style={{
                       background: 'none',
                       border: 'none',
                       padding: 0,
                       margin: 0,
                       cursor: 'pointer',
-                      font: 'inherit',
                       color: 'inherit',
+                      display: 'flex',
+                      alignItems: 'center',
                     }}
                   >
-                    Log out
+                    <LogOut size={18} />
                   </button>
                 </form>
               </li>
