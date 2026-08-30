@@ -7,7 +7,7 @@ export function ClientSubNav({ clientId }: { clientId: string }) {
   const pathname = usePathname();
 
   const tabs = [
-    { href: `/admin/clients/${clientId}/gallery`, label: 'Gallery' },
+    { href: `/admin/clients/${clientId}/gallery`, label: 'Galleries' },
     { href: `/admin/clients/${clientId}/upload`, label: 'Upload' },
   ];
 

@@ -9,11 +9,13 @@ import { movePhotoToFolderAction } from '@/lib/admin/gallery-actions';
 export function PhotoFolderSelect({
   photoId,
   clientId,
+  galleryId,
   currentFolderId,
   folders,
 }: {
   photoId: string;
   clientId: string;
+  galleryId: string;
   currentFolderId: string | null;
   folders: { id: string; name: string }[];
 }) {
@@ -26,6 +28,7 @@ export function PhotoFolderSelect({
     >
       <input type="hidden" name="photoId" value={photoId} />
       <input type="hidden" name="clientId" value={clientId} />
+      <input type="hidden" name="galleryId" value={galleryId} />
       <select
         name="folderId"
         defaultValue={currentFolderId ?? ''}

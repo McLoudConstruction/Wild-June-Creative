@@ -7,6 +7,12 @@ import { createAdminClient } from '@/lib/supabase/admin';
 // from the number of days chosen in the form. is_expired starts
 // false regardless — the daily cron job (check-gallery-expiration)
 // is what flips it once expires_at actually passes.
+//
+// Clients can have any number of galleries (repeat clients get a new
+// one per session) — nothing here limits it to one. client_id has no
+// uniqueness constraint at the database level, so this has always
+// been possible; the earlier admin UI just only ever showed the most
+// recent one.
 export async function createGalleryAction(formData: FormData) {
   const clientId = formData.get('clientId') as string;
   const title = (formData.get('title') as string)?.trim() || null;
@@ -20,18 +26,27 @@ export async function createGalleryAction(formData: FormData) {
   expiresAt.setDate(expiresAt.getDate() + (Number.isFinite(availabilityDays) ? availabilityDays : 30));
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from('galleries').insert({
-    client_id: clientId,
-    title,
-    published_at: new Date().toISOString(),
-    expires_at: expiresAt.toISOString(),
-  });
+  const { data, error } = await supabase
+    .from('galleries')
+    .insert({
+      client_id: clientId,
+      title,
+      published_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+    })
+    .select('id')
+    .single();
 
-  if (error) {
-    redirect(`/admin/clients/${clientId}/upload?error=${encodeURIComponent(error.message)}`);
+  if (error || !data) {
+    redirect(
+      `/admin/clients/${clientId}/upload?error=${encodeURIComponent(error?.message ?? 'Could not create gallery.')}`
+    );
   }
 
-  redirect(`/admin/clients/${clientId}/upload?success=gallery_created`);
+  // Straight into uploading for the gallery that was just created,
+  // rather than back to the (now multi-gallery) picker list — that's
+  // almost always the very next thing you want to do.
+  redirect(`/admin/clients/${clientId}/upload/${data.id}?success=gallery_created`);
 }
 
 // Deletes a photo — both the storage object and the database row.
@@ -52,6 +67,7 @@ export async function deletePhotoAction(formData: FormData) {
   const thumbnailPath = formData.get('thumbnailPath') as string | null;
   const originalPath = formData.get('originalPath') as string | null;
   const clientId = formData.get('clientId') as string;
+  const galleryId = formData.get('galleryId') as string;
 
   const supabase = createAdminClient();
 
@@ -63,10 +79,12 @@ export async function deletePhotoAction(formData: FormData) {
   const { error } = await supabase.from('photos').delete().eq('id', photoId);
 
   if (error) {
-    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/admin/clients/${clientId}/gallery/${galleryId}?error=${encodeURIComponent(error.message)}`
+    );
   }
 
-  redirect(`/admin/clients/${clientId}/gallery?success=photo_deleted`);
+  redirect(`/admin/clients/${clientId}/gallery/${galleryId}?success=photo_deleted`);
 }
 
 // Folders ("albums") group photos within one gallery — e.g. separating
@@ -82,7 +100,7 @@ export async function createFolderAction(formData: FormData) {
 
   if (!galleryId || !name) {
     redirect(
-      `/admin/clients/${clientId}/gallery?error=${encodeURIComponent('Folder name is required.')}`
+      `/admin/clients/${clientId}/gallery/${galleryId}?error=${encodeURIComponent('Folder name is required.')}`
     );
   }
 
@@ -100,10 +118,12 @@ export async function createFolderAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/admin/clients/${clientId}/gallery/${galleryId}?error=${encodeURIComponent(error.message)}`
+    );
   }
 
-  redirect(`/admin/clients/${clientId}/gallery?success=folder_created`);
+  redirect(`/admin/clients/${clientId}/gallery/${galleryId}?success=folder_created`);
 }
 
 // Same folder-creation logic as createFolderAction, but called
@@ -145,20 +165,25 @@ export async function createFolderInlineAction(
 export async function renameFolderAction(formData: FormData) {
   const folderId = formData.get('folderId') as string;
   const clientId = formData.get('clientId') as string;
+  const galleryId = formData.get('galleryId') as string;
   const name = (formData.get('name') as string)?.trim();
 
   if (!folderId || !name) {
-    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent('Name is required.')}`);
+    redirect(
+      `/admin/clients/${clientId}/gallery/${galleryId}?error=${encodeURIComponent('Name is required.')}`
+    );
   }
 
   const supabase = createAdminClient();
   const { error } = await supabase.from('photo_folders').update({ name }).eq('id', folderId);
 
   if (error) {
-    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/admin/clients/${clientId}/gallery/${galleryId}?error=${encodeURIComponent(error.message)}`
+    );
   }
 
-  redirect(`/admin/clients/${clientId}/gallery?success=folder_renamed`);
+  redirect(`/admin/clients/${clientId}/gallery/${galleryId}?success=folder_renamed`);
 }
 
 // Deleting a folder never deletes photos — the folder_id foreign key
@@ -167,15 +192,18 @@ export async function renameFolderAction(formData: FormData) {
 export async function deleteFolderAction(formData: FormData) {
   const folderId = formData.get('folderId') as string;
   const clientId = formData.get('clientId') as string;
+  const galleryId = formData.get('galleryId') as string;
 
   const supabase = createAdminClient();
   const { error } = await supabase.from('photo_folders').delete().eq('id', folderId);
 
   if (error) {
-    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/admin/clients/${clientId}/gallery/${galleryId}?error=${encodeURIComponent(error.message)}`
+    );
   }
 
-  redirect(`/admin/clients/${clientId}/gallery?success=folder_deleted`);
+  redirect(`/admin/clients/${clientId}/gallery/${galleryId}?success=folder_deleted`);
 }
 
 // Moves a single existing photo into a folder (or back to unsorted,
@@ -184,6 +212,7 @@ export async function deleteFolderAction(formData: FormData) {
 export async function movePhotoToFolderAction(formData: FormData) {
   const photoId = formData.get('photoId') as string;
   const clientId = formData.get('clientId') as string;
+  const galleryId = formData.get('galleryId') as string;
   const folderId = (formData.get('folderId') as string) || null;
 
   const supabase = createAdminClient();
@@ -193,10 +222,12 @@ export async function movePhotoToFolderAction(formData: FormData) {
     .eq('id', photoId);
 
   if (error) {
-    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/admin/clients/${clientId}/gallery/${galleryId}?error=${encodeURIComponent(error.message)}`
+    );
   }
 
-  redirect(`/admin/clients/${clientId}/gallery?success=photo_moved`);
+  redirect(`/admin/clients/${clientId}/gallery/${galleryId}?success=photo_moved`);
 }
 
 // Same idea as movePhotoToFolderAction, but for a checkbox-selected
@@ -206,12 +237,13 @@ export async function movePhotoToFolderAction(formData: FormData) {
 // unsorted.
 export async function moveManyPhotosToFolderAction(formData: FormData) {
   const clientId = formData.get('clientId') as string;
+  const galleryId = formData.get('galleryId') as string;
   const folderId = (formData.get('folderId') as string) || null;
   const photoIds = formData.getAll('photoIds').map(String).filter(Boolean);
 
   if (photoIds.length === 0) {
     redirect(
-      `/admin/clients/${clientId}/gallery?error=${encodeURIComponent(
+      `/admin/clients/${clientId}/gallery/${galleryId}?error=${encodeURIComponent(
         'Select at least one photo to move.'
       )}`
     );
@@ -224,10 +256,12 @@ export async function moveManyPhotosToFolderAction(formData: FormData) {
     .in('id', photoIds);
 
   if (error) {
-    redirect(`/admin/clients/${clientId}/gallery?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/admin/clients/${clientId}/gallery/${galleryId}?error=${encodeURIComponent(error.message)}`
+    );
   }
 
   redirect(
-    `/admin/clients/${clientId}/gallery?success=photos_moved&count=${photoIds.length}`
+    `/admin/clients/${clientId}/gallery/${galleryId}?success=photos_moved&count=${photoIds.length}`
   );
 }

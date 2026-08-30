@@ -2,23 +2,23 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getWatermarkSettings } from '@/lib/admin/watermark';
 import { createGalleryAction } from '@/lib/admin/gallery-actions';
-import { GalleryUploader } from '@/components/GalleryUploader';
 
 export const dynamic = 'force-dynamic';
-// Gives the per-photo processing action (compress + watermark +
-// thumbnail) real headroom — a large original can take a few seconds
-// through sharp, and this page is where that action gets invoked
-// from.
-export const maxDuration = 60;
 
-export default async function ClientUploadPage({
+// Landing spot for the Upload tab: pick an existing gallery to keep
+// adding photos to, or start a brand new one. A repeat client ends up
+// with a gallery per session, so "upload" can no longer assume there's
+// just one gallery to drop photos into — this is the picker that
+// makes that explicit instead of silently guessing "the most recent
+// one," which is what the single-gallery version of this page used to
+// do.
+export default async function ClientUploadPickerPage({
   params,
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { error?: string; success?: string };
+  searchParams: { error?: string };
 }) {
   noStore();
   const supabase = createAdminClient();
@@ -33,85 +33,95 @@ export default async function ClientUploadPage({
     notFound();
   }
 
-  const watermarkSettings = await getWatermarkSettings();
-  const watermarkConfigured = Boolean(watermarkSettings?.storage_path);
-
-  const { data: gallery } = await supabase
+  const { data: galleries } = await supabase
     .from('galleries')
     .select('*')
     .eq('client_id', params.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order('created_at', { ascending: false });
 
-  const { data: folders } = gallery
-    ? await supabase
-        .from('photo_folders')
-        .select('*')
-        .eq('gallery_id', gallery.id)
-        .order('sort_order', { ascending: true })
-    : { data: [] };
+  const galleryList = galleries ?? [];
 
   return (
     <div style={{ marginTop: 8 }}>
-      {searchParams.success === 'gallery_created' && (
-        <p style={{ color: 'green' }}>
-          Gallery created. Upload photos below whenever you're ready.
-        </p>
-      )}
       {searchParams.error && (
         <p style={{ color: 'crimson' }}>{decodeURIComponent(searchParams.error)}</p>
       )}
 
-      {!gallery ? (
-        <div style={{ maxWidth: 400 }}>
-          <p style={{ color: '#666' }}>This client doesn't have a gallery yet.</p>
-          <form action={createGalleryAction}>
-            <input type="hidden" name="clientId" value={client.id} />
-            <div style={{ marginBottom: 12 }}>
-              <label htmlFor="title">Gallery title (optional)</label>
-              <input
-                id="title"
-                name="title"
-                type="text"
-                placeholder="e.g. Smith Family Fall Session"
-                style={{ width: '100%', padding: 8 }}
-              />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label htmlFor="availabilityDays">Available for how many days?</label>
-              <input
-                id="availabilityDays"
-                name="availabilityDays"
-                type="number"
-                defaultValue={30}
-                min={1}
-                style={{ width: '100%', padding: 8 }}
-              />
-            </div>
-            <button type="submit" style={{ padding: '8px 16px' }}>
-              Create gallery
-            </button>
-          </form>
+      {galleryList.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <h4
+            style={{
+              fontSize: 13,
+              color: '#888',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              marginBottom: 8,
+            }}
+          >
+            Upload to an existing gallery
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {galleryList.map((gallery) => (
+              <Link
+                key={gallery.id}
+                href={`/admin/clients/${client.id}/upload/${gallery.id}`}
+                style={{
+                  border: '1px solid #eee',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                  fontSize: 14,
+                }}
+              >
+                {gallery.title || 'Untitled gallery'}{' '}
+                <span style={{ color: '#888' }}>
+                  ({gallery.is_expired ? 'expired' : 'active'})
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
-      ) : (
-        <>
-          <p style={{ color: '#666' }}>
-            {gallery.title || 'Untitled gallery'} — expires{' '}
-            {gallery.expires_at ? new Date(gallery.expires_at).toLocaleDateString() : 'never'}
-          </p>
-
-          <GalleryUploader
-            galleryId={gallery.id}
-            watermarkConfigured={watermarkConfigured}
-            folders={folders ?? []}
-          />
-
-          <p style={{ marginTop: 16, fontSize: 13 }}>
-            <Link href={`/admin/clients/${client.id}/gallery`}>View gallery →</Link>
-          </p>
-        </>
       )}
+
+      <div style={{ maxWidth: 400 }}>
+        <h4
+          style={{
+            fontSize: 13,
+            color: '#888',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+            marginBottom: 8,
+          }}
+        >
+          {galleryList.length > 0 ? 'Or start a new gallery' : 'Create their first gallery'}
+        </h4>
+        <form action={createGalleryAction}>
+          <input type="hidden" name="clientId" value={client.id} />
+          <div style={{ marginBottom: 12 }}>
+            <label htmlFor="title">Gallery title (optional)</label>
+            <input
+              id="title"
+              name="title"
+              type="text"
+              placeholder="e.g. Smith Family Fall Session"
+              style={{ width: '100%', padding: 8 }}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label htmlFor="availabilityDays">Available for how many days?</label>
+            <input
+              id="availabilityDays"
+              name="availabilityDays"
+              type="number"
+              defaultValue={30}
+              min={1}
+              style={{ width: '100%', padding: 8 }}
+            />
+          </div>
+          <button type="submit" style={{ padding: '8px 16px' }}>
+            Create gallery
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

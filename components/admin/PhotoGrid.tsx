@@ -150,6 +150,7 @@ export function PhotoGrid({
     if (selectedIds.size === 0 || isPending) return;
     const formData = new FormData();
     formData.set('clientId', clientId);
+    formData.set('galleryId', galleryId);
     formData.set('folderId', bulkFolderId);
     selectedIds.forEach((id) => formData.append('photoIds', id));
     startTransition(() => {
@@ -398,6 +399,7 @@ export function PhotoGrid({
                           value={photo.original_path ?? ''}
                         />
                         <input type="hidden" name="clientId" value={clientId} />
+                        <input type="hidden" name="galleryId" value={galleryId} />
                         <button
                           type="submit"
                           aria-label={`Delete ${photo.file_name}`}
@@ -423,6 +425,7 @@ export function PhotoGrid({
                         <PhotoFolderSelect
                           photoId={photo.id}
                           clientId={clientId}
+                          galleryId={galleryId}
                           currentFolderId={photo.folder_id}
                           folders={localFolders}
                         />
