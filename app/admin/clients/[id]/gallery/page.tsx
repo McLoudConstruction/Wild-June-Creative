@@ -48,18 +48,10 @@ export default async function ClientGalleriesPage({
           {galleryList.map((gallery) => {
             const photoCount = (gallery.photos as unknown as { count: number }[])?.[0]?.count ?? 0;
             return (
-              <div
+              <Link
                 key={gallery.id}
-                style={{
-                  border: '1px solid #eee',
-                  borderRadius: 8,
-                  padding: 16,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                }}
+                href={`/admin/clients/${client.id}/gallery/${gallery.id}`}
+                className="gallery-card"
               >
                 <div>
                   <h3 style={{ margin: 0 }}>{gallery.title || 'Untitled gallery'}</h3>
@@ -75,15 +67,18 @@ export default async function ClientGalleriesPage({
                     Created {new Date(gallery.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                  <Link
-                    href={`/admin/clients/${client.id}/gallery/${gallery.id}`}
-                    style={{ padding: '6px 12px', fontSize: 13, border: '1px solid #333', borderRadius: 4 }}
-                  >
-                    Edit
-                  </Link>
-                </div>
-              </div>
+                <span
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 13,
+                    border: '1px solid #333',
+                    borderRadius: 4,
+                    flexShrink: 0,
+                  }}
+                >
+                  Edit
+                </span>
+              </Link>
             );
           })}
         </div>
