@@ -1,0 +1,14 @@
+-- Adds a notification_type value for the "forgot password" flow at
+-- client login, so it can go through the same sendNotification()
+-- logging path (lib/notifications/send.ts) as every other client
+-- email — same audit trail in the notifications table, same
+-- sent/failed tracking, rather than a one-off Resend call with no
+-- record of whether it went out.
+--
+-- Run manually in the Supabase SQL Editor, like every other migration
+-- in this project — this isn't applied automatically on deploy.
+--
+-- Postgres requires ALTER TYPE ... ADD VALUE to run outside an
+-- explicit transaction block, which is what running it as its own
+-- statement in the SQL Editor already does.
+alter type notification_type add value 'password_reset';

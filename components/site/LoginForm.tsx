@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 // Every return visit after the one-time invite goes through here.
@@ -105,6 +106,9 @@ export function LoginForm() {
             style={{ width: '100%', padding: 8 }}
           />
         </div>
+        <p style={{ marginBottom: 12, fontSize: 14 }}>
+          <Link href="/login/forgot-password">Forgot your password?</Link>
+        </p>
         {error && <p style={{ color: 'crimson' }}>{error}</p>}
         <button type="submit" disabled={loading} style={{ padding: '8px 16px' }}>
           {loading ? 'Logging in...' : 'Log in'}

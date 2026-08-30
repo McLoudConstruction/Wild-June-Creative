@@ -17,7 +17,8 @@ export type NotificationType =
   | 'payment_grace_warning'
   | 'booking_auto_cancelled'
   | 'gallery_expiring_soon'
-  | 'gallery_expired';
+  | 'gallery_expired'
+  | 'password_reset';
 
 type SendNotificationInput = {
   clientId: string;
@@ -116,6 +117,11 @@ function renderEmail(input: SendNotificationInput): { subject: string; html: str
       return {
         subject: 'Your gallery has expired',
         html: `<p>Hi ${clientName},</p><p>Your gallery is no longer available online. Contact us if you'd like it reactivated.</p>`,
+      };
+    case 'password_reset':
+      return {
+        subject: 'Reset your Wild June Creative password',
+        html: `<p>Hi ${clientName},</p><p>Click below to choose a new password:</p><p><a href="${data.resetLink}">Reset my password</a></p><p>This link expires soon and can only be used once. If you didn't request this, you can safely ignore this email — your password won't change.</p>`,
       };
   }
 }

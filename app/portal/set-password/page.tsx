@@ -21,13 +21,22 @@ export default function SetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  // Supabase includes the link's purpose as `type` in the fragment —
+  // 'invite' for a first-time account setup link, 'recovery' for a
+  // forgot-password link. Both land here and both work identically
+  // underneath (set a session from the fragment token, then call
+  // updateUser({ password })), but the copy should match what the
+  // person actually clicked rather than always saying "Welcome!" to
+  // someone who's just resetting a password on an account they've
+  // had for months.
+  const [linkType, setLinkType] = useState<'invite' | 'recovery'>('invite');
 
   useEffect(() => {
     const hash = window.location.hash;
 
     if (!hash || !hash.includes('access_token')) {
       setSessionError(
-        'This invite link looks incomplete or has already been used. Ask for a fresh invite from the dashboard.'
+        'This link looks incomplete or has already been used. Request a fresh one and try again.'
       );
       return;
     }
@@ -35,16 +44,19 @@ export default function SetPasswordPage() {
     const params = new URLSearchParams(hash.substring(1));
     const access_token = params.get('access_token');
     const refresh_token = params.get('refresh_token');
+    if (params.get('type') === 'recovery') {
+      setLinkType('recovery');
+    }
 
     if (!access_token || !refresh_token) {
-      setSessionError('This invite link is missing required information. Ask for a fresh one.');
+      setSessionError('This link is missing required information. Request a fresh one.');
       return;
     }
 
     const supabase = createClient();
     supabase.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
       if (error) {
-        setSessionError(`This invite link has expired or already been used: ${error.message}`);
+        setSessionError(`This link has expired or already been used: ${error.message}`);
         return;
       }
       // Clean the tokens out of the visible URL now that they're used.
@@ -98,8 +110,12 @@ export default function SetPasswordPage() {
 
   return (
     <div style={{ maxWidth: 400, margin: '48px auto', padding: '0 16px' }}>
-      <h1>Welcome! Set up your account</h1>
-      <p>Choose a password you'll use to log back into your gallery anytime.</p>
+      <h1>{linkType === 'recovery' ? 'Choose a new password' : 'Welcome! Set up your account'}</h1>
+      <p>
+        {linkType === 'recovery'
+          ? "Enter a new password for your account."
+          : "Choose a password you'll use to log back into your gallery anytime."}
+      </p>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 12 }}>
           <label htmlFor="password">Password</label>
@@ -125,7 +141,7 @@ export default function SetPasswordPage() {
         </div>
         {error && <p style={{ color: 'crimson' }}>{error}</p>}
         <button type="submit" disabled={loading} style={{ padding: '8px 16px' }}>
-          {loading ? 'Saving...' : 'Set password & continue'}
+          {loading ? 'Saving...' : linkType === 'recovery' ? 'Save new password' : 'Set password & continue'}
         </button>
       </form>
     </div>
