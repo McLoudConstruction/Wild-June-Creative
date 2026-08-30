@@ -8,7 +8,7 @@ import { PhotoGrid } from '@/components/admin/PhotoGrid';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ClientGalleryDetailPage({
+export default async function ClientGalleryPhotosPage({
   params,
   searchParams,
 }: {
@@ -18,20 +18,10 @@ export default async function ClientGalleryDetailPage({
   noStore();
   const supabase = createAdminClient();
 
-  const { data: client } = await supabase
-    .from('clients')
-    .select('*')
-    .eq('id', params.id)
-    .single();
-
-  if (!client) {
-    notFound();
-  }
-
-  // Scoped to one specific gallery via the route param — a client can
-  // have any number of galleries (repeat clients booking session
-  // after session), so this page always needs to know exactly which
-  // one it's showing rather than assuming "the" gallery.
+  // The shell layout already confirmed this gallery exists and
+  // belongs to this client — re-fetching here is just to get the
+  // actual row data this page needs (photos, folders), not to
+  // re-validate ownership.
   const { data: gallery } = await supabase
     .from('galleries')
     .select('*')
@@ -80,30 +70,6 @@ export default async function ClientGalleryDetailPage({
 
   return (
     <div>
-      <p style={{ fontSize: 13, marginBottom: 4 }}>
-        <Link href={`/admin/clients/${client.id}/gallery`}>← All galleries</Link>
-      </p>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
-          flexWrap: 'wrap',
-          gap: 8,
-        }}
-      >
-        <h3 style={{ margin: 0 }}>{gallery.title || 'Untitled gallery'}</h3>
-        <span style={{ fontSize: 13, color: '#888' }}>
-          {gallery.is_expired
-            ? 'Expired'
-            : gallery.expires_at
-              ? `Expires ${new Date(gallery.expires_at).toLocaleDateString()}`
-              : 'Never expires'}
-          {' · '}
-          <Link href={`/admin/clients/${client.id}/upload/${gallery.id}`}>Upload photos</Link>
-        </span>
-      </div>
-
       {searchParams.success === 'photo_deleted' && (
         <p style={{ color: 'green' }}>Photo deleted.</p>
       )}
@@ -141,7 +107,7 @@ export default async function ClientGalleryDetailPage({
 
           <nav style={{ display: 'flex', flexDirection: 'column', marginTop: 8 }}>
             <Link
-              href={`/admin/clients/${client.id}/gallery/${gallery.id}`}
+              href={`/admin/clients/${params.id}/gallery/${gallery.id}`}
               style={{
                 padding: '6px 8px',
                 borderRadius: 4,
@@ -159,7 +125,7 @@ export default async function ClientGalleryDetailPage({
               return (
                 <Link
                   key={folder.id}
-                  href={`/admin/clients/${client.id}/gallery/${gallery.id}?folder=${folder.id}`}
+                  href={`/admin/clients/${params.id}/gallery/${gallery.id}?folder=${folder.id}`}
                   style={{
                     padding: '6px 8px',
                     borderRadius: 4,
@@ -178,7 +144,7 @@ export default async function ClientGalleryDetailPage({
 
             {unsortedCount > 0 && (
               <Link
-                href={`/admin/clients/${client.id}/gallery/${gallery.id}?folder=unsorted`}
+                href={`/admin/clients/${params.id}/gallery/${gallery.id}?folder=unsorted`}
                 style={{
                   padding: '6px 8px',
                   borderRadius: 4,
@@ -198,7 +164,7 @@ export default async function ClientGalleryDetailPage({
             style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 16 }}
           >
             <input type="hidden" name="galleryId" value={gallery.id} />
-            <input type="hidden" name="clientId" value={client.id} />
+            <input type="hidden" name="clientId" value={params.id} />
             <input
               name="name"
               type="text"
@@ -223,7 +189,7 @@ export default async function ClientGalleryDetailPage({
                       style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
                     >
                       <input type="hidden" name="folderId" value={folder.id} />
-                      <input type="hidden" name="clientId" value={client.id} />
+                      <input type="hidden" name="clientId" value={params.id} />
                       <input type="hidden" name="galleryId" value={gallery.id} />
                       <input
                         name="name"
@@ -238,7 +204,7 @@ export default async function ClientGalleryDetailPage({
                     <div style={{ marginTop: 8 }}>
                       <DeleteFolderButton
                         folderId={folder.id}
-                        clientId={client.id}
+                        clientId={params.id}
                         galleryId={gallery.id}
                       />
                     </div>
@@ -253,13 +219,16 @@ export default async function ClientGalleryDetailPage({
           {photosWithUrls.length === 0 ? (
             <p style={{ color: '#888' }}>
               No photos uploaded yet —{' '}
-              <Link href={`/admin/clients/${client.id}/upload/${gallery.id}`}>upload some</Link>.
+              <Link href={`/admin/clients/${params.id}/gallery/${gallery.id}/upload`}>
+                upload some
+              </Link>
+              .
             </p>
           ) : (
             <PhotoGrid
               photos={photosWithUrls}
               folders={folderList}
-              clientId={client.id}
+              clientId={params.id}
               galleryId={gallery.id}
               filterFolderId={activeFolder}
             />

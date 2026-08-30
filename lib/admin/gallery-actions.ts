@@ -44,9 +44,9 @@ export async function createGalleryAction(formData: FormData) {
   }
 
   // Straight into uploading for the gallery that was just created,
-  // rather than back to the (now multi-gallery) picker list — that's
-  // almost always the very next thing you want to do.
-  redirect(`/admin/clients/${clientId}/upload/${data.id}?success=gallery_created`);
+  // via its own Upload tab within the gallery shell — that's almost
+  // always the very next thing you want to do.
+  redirect(`/admin/clients/${clientId}/gallery/${data.id}/upload?success=gallery_created`);
 }
 
 // Deletes a photo — both the storage object and the database row.

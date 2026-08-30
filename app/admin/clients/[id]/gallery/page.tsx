@@ -77,16 +77,10 @@ export default async function ClientGalleriesPage({
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   <Link
-                    href={`/admin/clients/${client.id}/upload/${gallery.id}`}
-                    style={{ padding: '6px 12px', fontSize: 13, border: '1px solid #ddd', borderRadius: 4 }}
-                  >
-                    Upload
-                  </Link>
-                  <Link
                     href={`/admin/clients/${client.id}/gallery/${gallery.id}`}
                     style={{ padding: '6px 12px', fontSize: 13, border: '1px solid #333', borderRadius: 4 }}
                   >
-                    Manage photos →
+                    Edit
                   </Link>
                 </div>
               </div>

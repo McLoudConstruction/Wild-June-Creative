@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { ClientSubNav } from '@/components/admin/ClientSubNav';
 
 export default async function ClientLayout({
   children,
@@ -49,9 +48,13 @@ export default async function ClientLayout({
         </Link>
       </div>
 
-      <ClientSubNav clientId={client.id} />
+      {/* No client-level tab bar anymore — Galleries (this page's own
+          content) is the only thing at this level. Each individual
+          gallery has its own Photos/Upload/Manage tabs via
+          GallerySubNav, one level down. */}
 
       {children}
     </div>
   );
 }
+
