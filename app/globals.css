@@ -531,6 +531,8 @@ img {
     width: 240px;
   }
 }
+
+.admin-block-row {
   display: flex;
   align-items: center;
   gap: 4px;
