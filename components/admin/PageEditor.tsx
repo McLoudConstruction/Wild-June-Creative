@@ -31,13 +31,14 @@ import {
 } from '@/lib/site/blocks';
 import { renderBlock } from '@/components/site/blocks/BlockRenderer';
 import { HeaderPreviewClient } from '@/components/site/HeaderPreviewClient';
+import { ImageField } from '@/components/admin/ImageField';
 import type { SessionPackage } from '@/components/site/blocks/Sessions';
 import type { SiteSettings } from '@/lib/site/settings';
 
 type FieldDescriptor = {
   key: string;
   label: string;
-  kind: 'text' | 'textarea';
+  kind: 'text' | 'textarea' | 'image';
   helper?: string;
 };
 
@@ -57,9 +58,9 @@ const FIELD_SCHEMAS: Record<string, FieldDescriptor[]> = {
   featured_photo: [
     {
       key: 'imageSrc',
-      label: 'Photo URL',
-      kind: 'text',
-      helper: 'Paste an image URL. Leave blank to show a placeholder.',
+      label: 'Photo',
+      kind: 'image',
+      helper: 'Leave blank to show a placeholder.',
     },
     { key: 'href', label: 'Link when clicked', kind: 'text' },
     { key: 'label', label: 'Placeholder caption', kind: 'text' },
@@ -73,9 +74,9 @@ const FIELD_SCHEMAS: Record<string, FieldDescriptor[]> = {
     { key: 'body', label: 'Body text', kind: 'textarea' },
     {
       key: 'imageSrc',
-      label: 'Photo URL',
-      kind: 'text',
-      helper: 'Paste an image URL. Leave blank to show a placeholder.',
+      label: 'Photo',
+      kind: 'image',
+      helper: 'Leave blank to show a placeholder.',
     },
     { key: 'buttonLabel', label: 'Button text', kind: 'text' },
     { key: 'buttonHref', label: 'Button link', kind: 'text' },
@@ -86,9 +87,9 @@ const FIELD_SCHEMAS: Record<string, FieldDescriptor[]> = {
     { key: 'body', label: 'Body text', kind: 'textarea' },
     {
       key: 'imageSrc',
-      label: 'Photo URL',
-      kind: 'text',
-      helper: 'Paste an image URL. Leave blank to show a placeholder.',
+      label: 'Photo',
+      kind: 'image',
+      helper: 'Leave blank to show a placeholder.',
     },
     { key: 'buttonLabel', label: 'Button text (optional)', kind: 'text' },
     { key: 'buttonHref', label: 'Button link', kind: 'text' },
@@ -394,6 +395,19 @@ export function PageEditor({
             <h3 style={{ marginBottom: 16 }}>{BLOCK_LABELS[selectedBlock.type]}</h3>
             {FIELD_SCHEMAS[selectedBlock.type].map((field) => {
               const value = (selectedBlock.props as Record<string, string>)[field.key] ?? '';
+
+              if (field.kind === 'image') {
+                return (
+                  <ImageField
+                    key={field.key}
+                    label={field.label}
+                    value={value}
+                    onChange={(url) => updateSelectedProp(field.key, url)}
+                    helper={field.helper}
+                  />
+                );
+              }
+
               return (
                 <div key={field.key} style={{ marginBottom: 16 }}>
                   <label htmlFor={field.key} style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>
@@ -476,31 +490,39 @@ export function PageEditor({
             </div>
             <p style={{ fontSize: 13, marginBottom: 10 }}>Photos</p>
             {selectedBlock.props.items.map((item, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 10 }}>
-                <input
-                  type="text"
-                  placeholder="Image URL"
+              <div
+                key={i}
+                style={{
+                  border: '1px solid rgba(64,56,46,0.12)',
+                  borderRadius: 6,
+                  padding: 12,
+                  marginBottom: 10,
+                }}
+              >
+                <ImageField
+                  label={`Photo ${i + 1}`}
                   value={item.imageSrc}
-                  onChange={(e) => updatePortfolioItem(i, 'imageSrc', e.target.value)}
-                  style={{ flex: 1, padding: 8 }}
+                  onChange={(url) => updatePortfolioItem(i, 'imageSrc', url)}
                 />
-                <select
-                  value={item.aspectRatio}
-                  onChange={(e) => updatePortfolioItem(i, 'aspectRatio', e.target.value)}
-                  style={{ padding: 8 }}
-                >
-                  <option value="3 / 4">Portrait</option>
-                  <option value="1 / 1">Square</option>
-                  <option value="4 / 5">Tall</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() => removePortfolioItem(i)}
-                  aria-label="Remove photo"
-                  style={{ padding: 8 }}
-                >
-                  <Trash2 size={15} />
-                </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select
+                    value={item.aspectRatio}
+                    onChange={(e) => updatePortfolioItem(i, 'aspectRatio', e.target.value)}
+                    style={{ padding: 8, flex: 1 }}
+                  >
+                    <option value="3 / 4">Portrait</option>
+                    <option value="1 / 1">Square</option>
+                    <option value="4 / 5">Tall</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => removePortfolioItem(i)}
+                    aria-label="Remove photo"
+                    style={{ padding: 8 }}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </div>
             ))}
             <button type="button" onClick={addPortfolioItem} className="admin-add-block-button">
@@ -545,18 +567,11 @@ export function PageEditor({
             )}
 
             {selectedAppearance.background === 'image' && (
-              <div style={{ marginBottom: 14 }}>
-                <label htmlFor="appearance-bg-image" style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>
-                  Background image URL
-                </label>
-                <input
-                  id="appearance-bg-image"
-                  type="text"
-                  value={selectedAppearance.backgroundImage}
-                  onChange={(e) => updateSelectedProp('backgroundImage', e.target.value)}
-                  style={{ width: '100%', padding: 8 }}
-                />
-              </div>
+              <ImageField
+                label="Background image"
+                value={selectedAppearance.backgroundImage}
+                onChange={(url) => updateSelectedProp('backgroundImage', url)}
+              />
             )}
 
             <div>
