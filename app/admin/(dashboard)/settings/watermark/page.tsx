@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { updateWatermarkSettingsAction } from '@/lib/admin/watermark-actions';
+import { SubmitButton } from '@/components/admin/SubmitButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,9 +35,35 @@ export default async function WatermarkSettingsPage({
         applied is a checkbox on the upload form each time, so you decide per-upload.
       </p>
 
-      {searchParams.success && <p style={{ color: 'green' }}>Settings saved.</p>}
+      {searchParams.success && (
+        <div
+          style={{
+            background: '#e6f4ea',
+            border: '1px solid #34a853',
+            color: '#1e7e34',
+            padding: '12px 16px',
+            borderRadius: 6,
+            margin: '16px 0',
+            fontSize: 14,
+          }}
+        >
+          ✓ Settings saved.
+        </div>
+      )}
       {searchParams.error && (
-        <p style={{ color: 'crimson' }}>{decodeURIComponent(searchParams.error)}</p>
+        <div
+          style={{
+            background: '#fdecea',
+            border: '1px solid crimson',
+            color: 'crimson',
+            padding: '12px 16px',
+            borderRadius: 6,
+            margin: '16px 0',
+            fontSize: 14,
+          }}
+        >
+          {decodeURIComponent(searchParams.error)}
+        </div>
       )}
 
       {previewUrl && (
@@ -110,9 +137,7 @@ export default async function WatermarkSettingsPage({
           />
         </div>
 
-        <button type="submit" style={{ padding: '8px 16px' }}>
-          Save settings
-        </button>
+        <SubmitButton />
       </form>
     </div>
   );
