@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Clients', match: (path: string) => path === '/admin' || path.startsWith('/admin/clients') },
+  { href: '/admin/pages', label: 'Pages', match: (path: string) => path.startsWith('/admin/pages') },
   { href: '/admin/sales', label: 'Sales', match: (path: string) => path.startsWith('/admin/sales') },
   { href: '/admin/settings', label: 'Settings', match: (path: string) => path.startsWith('/admin/settings') },
 ];
