@@ -6,6 +6,7 @@ export type BodyFont = 'jost' | 'karla' | 'lato';
 
 export type SiteSettings = {
   logo_url: string | null;
+  logo_position: 'left' | 'center' | 'right';
   favicon_url: string | null;
   header_style: 'solid' | 'image';
   header_image_url: string | null;
@@ -25,6 +26,7 @@ export type SiteSettings = {
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   logo_url: null,
+  logo_position: 'left',
   favicon_url: null,
   header_style: 'solid',
   header_image_url: null,

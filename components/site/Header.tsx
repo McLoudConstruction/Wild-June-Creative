@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { LogOut } from 'lucide-react';
 import { NAV_LINKS } from '@/lib/site/nav';
 import { SocialLinks } from './SocialLinks';
+import { HeaderLayout } from './HeaderLayout';
 import { createClient } from '@/lib/supabase/server';
 import { getSiteSettings } from '@/lib/site/settings';
 import { signOutAction } from '@/lib/portal/actions';
@@ -16,9 +17,11 @@ import { signOutAction } from '@/lib/portal/actions';
 // why /login's interactive form lives in its own LoginForm client
 // component instead of in app/login/page.tsx directly.)
 //
-// Header style (solid bar vs. full-bleed image with the nav overlaid)
-// and the logo are controlled from Admin > Settings > Branding — see
-// lib/site/settings.ts.
+// Header style, logo, and logo position are controlled from
+// Admin > Pages (logo position, live) and Admin > Settings > Branding
+// (everything else) — see lib/site/settings.ts. The actual
+// left/center/right arrangement logic lives in HeaderLayout, shared
+// with the editor's live preview.
 export async function Header() {
   const supabase = await createClient();
   const {
@@ -33,7 +36,7 @@ export async function Header() {
       : 'var(--ink)'
     : 'var(--ink)';
 
-  const logo = settings.logo_url ? (
+  const logoImg = settings.logo_url ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={settings.logo_url}
@@ -51,6 +54,51 @@ export async function Header() {
     />
   );
 
+  const logo = (
+    <Link href="/" aria-label="Wild June Creative home">
+      {logoImg}
+    </Link>
+  );
+
+  const trailingItems = (
+    <>
+      <li>
+        {user ? (
+          <Link href="/portal" className="nav-link" style={{ color: navTextColor }}>
+            Your Portal
+          </Link>
+        ) : (
+          <Link href="/login" className="nav-link" style={{ color: navTextColor }}>
+            Client Login
+          </Link>
+        )}
+      </li>
+      {user && (
+        <li>
+          <form action={signOutAction} style={{ margin: 0, display: 'flex' }}>
+            <button
+              type="submit"
+              aria-label="Log out"
+              title="Log out"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                cursor: 'pointer',
+                color: navTextColor,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <LogOut size={18} />
+            </button>
+          </form>
+        </li>
+      )}
+    </>
+  );
+
   return (
     <header
       style={
@@ -66,55 +114,13 @@ export async function Header() {
           : undefined
       }
     >
-      <div className="container header-row" style={{ width: '100%' }}>
-        <Link href="/" aria-label="Wild June Creative home">
-          {logo}
-        </Link>
-
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '2.5rem' }}>
-          <ul className="nav-list">
-            {NAV_LINKS.map((link) => (
-              <li key={link.href}>
-                <Link href={link.href} className="nav-link" style={{ color: navTextColor }}>
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-            <li>
-              {user ? (
-                <Link href="/portal" className="nav-link" style={{ color: navTextColor }}>
-                  Your Portal
-                </Link>
-              ) : (
-                <Link href="/login" className="nav-link" style={{ color: navTextColor }}>
-                  Client Login
-                </Link>
-              )}
-            </li>
-            {user && (
-              <li>
-                <form action={signOutAction} style={{ margin: 0, display: 'flex' }}>
-                  <button
-                    type="submit"
-                    aria-label="Log out"
-                    title="Log out"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      margin: 0,
-                      cursor: 'pointer',
-                      color: navTextColor,
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <LogOut size={18} />
-                  </button>
-                </form>
-              </li>
-            )}
-          </ul>
+      <HeaderLayout
+        logoPosition={settings.logo_position}
+        logo={logo}
+        navLinks={NAV_LINKS}
+        navTextColor={navTextColor}
+        trailingItems={trailingItems}
+        social={
           <SocialLinks
             color={navTextColor}
             instagramUrl={settings.instagram_url}
@@ -122,8 +128,8 @@ export async function Header() {
             pinterestUrl={settings.pinterest_url}
             tiktokUrl={settings.tiktok_url}
           />
-        </nav>
-      </div>
+        }
+      />
     </header>
   );
 }

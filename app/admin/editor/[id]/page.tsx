@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PageEditor } from '@/components/admin/PageEditor';
+import { DEFAULT_SITE_SETTINGS } from '@/lib/site/settings';
 import type { Block } from '@/lib/site/blocks';
 import type { SessionPackage } from '@/components/site/blocks/Sessions';
 
@@ -14,18 +15,21 @@ export const dynamic = 'force-dynamic';
 export default async function EditorPage({ params }: { params: { id: string } }) {
   const supabase = createAdminClient();
 
-  const [{ data: page }, { data: packages }] = await Promise.all([
+  const [{ data: page }, { data: packages }, { data: siteSettingsRow }] = await Promise.all([
     supabase.from('pages').select('*').eq('id', params.id).maybeSingle(),
     supabase
       .from('session_packages')
       .select('*')
       .eq('is_active', true)
       .order('price_cents', { ascending: true }),
+    supabase.from('site_settings').select('*').eq('id', true).maybeSingle(),
   ]);
 
   if (!page) {
     notFound();
   }
+
+  const siteSettings = { ...DEFAULT_SITE_SETTINGS, ...(siteSettingsRow ?? {}) };
 
   return (
     <PageEditor
@@ -34,6 +38,7 @@ export default async function EditorPage({ params }: { params: { id: string } })
       title={page.title}
       initialBlocks={(page.blocks as Block[] | null) ?? []}
       packages={(packages as SessionPackage[] | null) ?? []}
+      siteSettings={siteSettings}
     />
   );
 }

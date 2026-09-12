@@ -95,6 +95,22 @@ export async function processBrandingUpload(
 // (already uploaded and processed by the two actions above before
 // this ever runs) — so this action's whole request body is just text,
 // nowhere close to any size limit.
+// Called directly from the fullscreen page editor's sidebar dropdown
+// — a single-field save so picking a new position applies (and
+// persists) without leaving the editor or touching anything else in
+// site_settings.
+export async function updateLogoPosition(
+  position: 'left' | 'center' | 'right'
+): Promise<{ error: string | null }> {
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from('site_settings')
+    .upsert({ id: true, logo_position: position, updated_at: new Date().toISOString() });
+
+  return { error: error?.message ?? null };
+}
+
 export async function updateBrandingAction(formData: FormData) {
   const supabase = createAdminClient();
 

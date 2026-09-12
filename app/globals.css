@@ -79,6 +79,22 @@ img {
   color: var(--ink);
 }
 
+.header-center-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 26px 0;
+}
+
+@media (max-width: 720px) {
+  .header-center-grid {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    row-gap: 16px;
+  }
+}
+
 @media (max-width: 720px) {
   .header-row {
     flex-wrap: wrap;

@@ -19,6 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2, Plus } from 'lucide-react';
 import { updatePageBlocks } from '@/lib/admin/pages-actions';
+import { updateLogoPosition } from '@/lib/admin/settings-actions';
 import {
   BLOCK_LABELS,
   BLOCK_ORDER,
@@ -29,7 +30,9 @@ import {
   type SectionAppearance,
 } from '@/lib/site/blocks';
 import { renderBlock } from '@/components/site/blocks/BlockRenderer';
+import { HeaderPreviewClient } from '@/components/site/HeaderPreviewClient';
 import type { SessionPackage } from '@/components/site/blocks/Sessions';
+import type { SiteSettings } from '@/lib/site/settings';
 
 type FieldDescriptor = {
   key: string;
@@ -132,12 +135,14 @@ export function PageEditor({
   title,
   initialBlocks,
   packages,
+  siteSettings,
 }: {
   pageId: string;
   slug: string;
   title: string;
   initialBlocks: Block[];
   packages: SessionPackage[];
+  siteSettings: SiteSettings;
 }) {
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [selectedId, setSelectedId] = useState<string | null>(initialBlocks[0]?.id ?? null);
@@ -145,11 +150,24 @@ export function PageEditor({
   const [isSaving, startSaving] = useTransition();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  const [logoPosition, setLogoPosition] = useState(siteSettings.logo_position);
+  const [isSavingLogoPosition, startSavingLogoPosition] = useTransition();
+  const [logoPositionMessage, setLogoPositionMessage] = useState<string | null>(null);
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const selectedBlock = blocks.find((b) => b.id === selectedId) ?? null;
   const selectedAppearance: SectionAppearance | null =
     selectedBlock && selectedBlock.type !== 'featured_photo' ? selectedBlock.props : null;
+
+  function handleLogoPositionChange(position: 'left' | 'center' | 'right') {
+    setLogoPosition(position);
+    setLogoPositionMessage(null);
+    startSavingLogoPosition(async () => {
+      const result = await updateLogoPosition(position);
+      setLogoPositionMessage(result.error ? `Couldn't save: ${result.error}` : 'Saved');
+    });
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -241,6 +259,28 @@ export function PageEditor({
           </p>
         </div>
 
+        <div className="editor-sidebar-section">
+          <p className="editor-sidebar-heading">Site header</p>
+          <label htmlFor="logo-position" style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>
+            Logo position
+          </label>
+          <select
+            id="logo-position"
+            value={logoPosition}
+            onChange={(e) => handleLogoPositionChange(e.target.value as 'left' | 'center' | 'right')}
+            style={{ width: '100%', padding: 8 }}
+          >
+            <option value="left">Left</option>
+            <option value="center">Center (nav split either side)</option>
+            <option value="right">Right (layout flipped)</option>
+          </select>
+          {(isSavingLogoPosition || logoPositionMessage) && (
+            <p style={{ fontSize: 12, color: 'var(--warm-gray)', marginTop: 6 }}>
+              {isSavingLogoPosition ? 'Saving…' : logoPositionMessage}
+            </p>
+          )}
+        </div>
+
         <div className="editor-sidebar-section" style={{ flex: 1 }}>
           <p className="editor-sidebar-heading">Sections</p>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -306,6 +346,9 @@ export function PageEditor({
         </div>
 
         <div className="editor-canvas-scroll">
+          <div onClickCapture={(e) => e.preventDefault()}>
+            <HeaderPreviewClient settings={siteSettings} logoPosition={logoPosition} />
+          </div>
           {blocks.length === 0 && (
             <p style={{ padding: 80, textAlign: 'center', color: 'var(--warm-gray)' }}>
               This page is empty — add a section from the sidebar to get started.
