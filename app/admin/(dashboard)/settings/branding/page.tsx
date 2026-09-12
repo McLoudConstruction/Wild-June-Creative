@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { updateBrandingAction } from '@/lib/admin/settings-actions';
 import { DEFAULT_SITE_SETTINGS, HEADING_FONT_OPTIONS, BODY_FONT_OPTIONS } from '@/lib/site/settings';
 import { SubmitButton } from '@/components/admin/SubmitButton';
+import { BrandingAssetUpload } from '@/components/admin/BrandingAssetUpload';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,47 +59,22 @@ export default async function BrandingSettingsPage({
       <form action={updateBrandingAction}>
         <h3 style={{ marginTop: 28, marginBottom: 12 }}>Logo &amp; favicon</h3>
 
-        <div style={{ marginBottom: 16 }}>
-          <label htmlFor="logo">Logo</label>
-          {settings.logo_url && (
-            <div style={{ margin: '8px 0' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={settings.logo_url}
-                alt="Current logo"
-                style={{ maxWidth: 200, background: '#eee', padding: 8, borderRadius: 4 }}
-              />
-            </div>
-          )}
-          <input id="logo" name="logo" type="file" accept="image/*" style={{ display: 'block', marginTop: 4 }} />
-          <p style={{ fontSize: 12, color: 'var(--warm-gray)', marginTop: 4 }}>
-            Leave blank to keep the current wordmark. PNG with a transparent background works best.
-          </p>
-        </div>
+        <BrandingAssetUpload
+          name="logoUrl"
+          assetType="logo"
+          label="Logo"
+          initialUrl={settings.logo_url}
+          helperText="Leave blank to keep the current wordmark. PNG with a transparent background works best."
+        />
 
-        <div style={{ marginBottom: 16 }}>
-          <label htmlFor="favicon">Favicon</label>
-          {settings.favicon_url && (
-            <div style={{ margin: '8px 0' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={settings.favicon_url}
-                alt="Current favicon"
-                style={{ width: 40, height: 40, background: '#eee', padding: 4, borderRadius: 4 }}
-              />
-            </div>
-          )}
-          <input
-            id="favicon"
-            name="favicon"
-            type="file"
-            accept="image/*"
-            style={{ display: 'block', marginTop: 4 }}
-          />
-          <p style={{ fontSize: 12, color: 'var(--warm-gray)', marginTop: 4 }}>
-            A square image works best — it gets resized down automatically.
-          </p>
-        </div>
+        <BrandingAssetUpload
+          name="faviconUrl"
+          assetType="favicon"
+          label="Favicon"
+          initialUrl={settings.favicon_url}
+          previewSize={40}
+          helperText="A square image works best — it gets resized down automatically."
+        />
 
         <h3 style={{ marginTop: 28, marginBottom: 12 }}>Header</h3>
 
@@ -115,30 +91,14 @@ export default async function BrandingSettingsPage({
           </select>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <label htmlFor="headerImage">Header background image</label>
-          {settings.header_image_url && (
-            <div style={{ margin: '8px 0' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={settings.header_image_url}
-                alt="Current header background"
-                style={{ maxWidth: 300, borderRadius: 4 }}
-              />
-            </div>
-          )}
-          <input
-            id="headerImage"
-            name="headerImage"
-            type="file"
-            accept="image/*"
-            style={{ display: 'block', marginTop: 4 }}
-          />
-          <p style={{ fontSize: 12, color: 'var(--warm-gray)', marginTop: 4 }}>
-            Only used when header style is set to the full-width image option. A wide landscape
-            photo works best.
-          </p>
-        </div>
+        <BrandingAssetUpload
+          name="headerImageUrl"
+          assetType="header"
+          label="Header background image"
+          initialUrl={settings.header_image_url}
+          previewSize={300}
+          helperText="Only used when header style is set to the full-width image option. A wide landscape photo works best."
+        />
 
         <div style={{ marginBottom: 16 }}>
           <label htmlFor="headerOverlayTheme">Logo &amp; nav color over the header image</label>
