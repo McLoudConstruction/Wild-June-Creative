@@ -1,74 +1,27 @@
 'use server';
 
-import sharp from 'sharp';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-const MAX_DIMENSION = 2000;
-const QUALITY = 85;
-
-// Step 1 of a direct upload (mirrors lib/admin/settings-actions.ts) —
-// signed URL so the file goes browser → Supabase directly, never
-// through a Vercel function. See that file's comment for why: Vercel
-// caps request bodies at 4.5MB regardless of any app-level config,
-// and a real photo routinely exceeds that.
+// Resizing used to happen here, server-side, via sharp — download the
+// raw upload, resize, re-upload, delete the staging copy. That meant
+// two full-size transfers plus a server round trip for every upload.
+// The browser now compresses the image itself before it ever leaves
+// (see lib/site/image-compress.ts), so this just hands back a signed
+// URL straight to the image's final location — one small upload,
+// nothing to process afterward.
 export async function getSignedMediaUploadUrl(fileName: string) {
   const supabase = createAdminClient();
-  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const stagingPath = `_incoming/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
+  const safeBase = fileName.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${Date.now()}-${safeBase}.jpg`;
 
-  const { data, error } = await supabase.storage.from('media-library').createSignedUploadUrl(stagingPath);
+  const { data, error } = await supabase.storage.from('media-library').createSignedUploadUrl(path);
 
   if (error || !data) {
     throw new Error(`Couldn't prepare upload: ${error?.message ?? 'unknown error'}`);
   }
 
-  return { path: data.path, token: data.token };
-}
-
-// Step 2 — resizes to a web-appropriate size and moves it into the
-// library's flat namespace so listMediaLibrary() picks it up.
-export async function processMediaUpload(
-  stagingPath: string,
-  fileName: string
-): Promise<{ url?: string; error?: string }> {
-  const supabase = createAdminClient();
-
-  const { data: rawFile, error: downloadError } = await supabase.storage
-    .from('media-library')
-    .download(stagingPath);
-
-  if (downloadError || !rawFile) {
-    return { error: `Couldn't read uploaded file: ${downloadError?.message ?? 'unknown error'}` };
-  }
-
-  let resized: Buffer;
-  try {
-    const buffer = Buffer.from(await rawFile.arrayBuffer());
-    resized = await sharp(buffer)
-      .rotate()
-      .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: QUALITY })
-      .toBuffer();
-  } catch (err) {
-    await supabase.storage.from('media-library').remove([stagingPath]);
-    return { error: `Couldn't process image: ${err instanceof Error ? err.message : 'unknown error'}` };
-  }
-
-  const safeBase = fileName.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_');
-  const finalPath = `${Date.now()}-${safeBase}.jpg`;
-
-  const { error: uploadError } = await supabase.storage
-    .from('media-library')
-    .upload(finalPath, resized, { contentType: 'image/jpeg' });
-
-  await supabase.storage.from('media-library').remove([stagingPath]);
-
-  if (uploadError) {
-    return { error: uploadError.message };
-  }
-
-  const { data } = supabase.storage.from('media-library').getPublicUrl(finalPath);
-  return { url: data.publicUrl };
+  const { data: publicUrlData } = supabase.storage.from('media-library').getPublicUrl(path);
+  return { path: data.path, token: data.token, url: publicUrlData.publicUrl };
 }
 
 export type MediaLibraryItem = { name: string; url: string };

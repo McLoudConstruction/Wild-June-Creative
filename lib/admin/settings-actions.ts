@@ -1,94 +1,41 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import sharp from 'sharp';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 type AssetType = 'logo' | 'favicon' | 'header';
 
-const MAX_DIMENSIONS: Record<AssetType, number> = {
-  logo: 600,
-  favicon: 256,
-  header: 2400,
+// logo/favicon keep PNG for transparency; header is a full photo with
+// no transparency need, so JPEG — meaningfully smaller for the same
+// visual quality, which matters since it's usually the largest of the
+// three by far.
+const ASSET_EXTENSION: Record<AssetType, 'png' | 'jpg'> = {
+  logo: 'png',
+  favicon: 'png',
+  header: 'jpg',
 };
 
-// Step 1 — called from the browser (BrandingAssetUpload) before any
-// bytes move. Returns a short-lived signed upload token so the file
-// goes straight from the browser to Supabase Storage, never through
-// this Vercel function. That's not just an optimization: Vercel's
-// serverless functions have a hard 4.5MB request body limit that no
-// app-level config can raise, and a real camera photo routinely
-// exceeds it. Routing bytes through a Server Action (as this used to)
-// meant uploads silently failed above that size, with no error and no
-// server log, since Vercel rejects the request before the function
-// ever runs. Same pattern as the gallery photo uploader in
-// lib/admin/upload-actions.ts.
+// Resizing used to happen here, server-side, via sharp — download the
+// raw upload, resize, re-upload, delete the staging copy. That meant
+// two full-size transfers plus a server round trip for every upload,
+// which is a big part of why this used to feel slow. The browser now
+// compresses the image itself before it ever leaves (see
+// lib/site/image-compress.ts and BrandingAssetUpload.tsx), so this
+// just hands back a signed URL straight to the image's final
+// location — one small upload, nothing to process afterward.
 export async function getSignedBrandingUploadUrl(assetType: AssetType, fileName: string) {
   const supabase = createAdminClient();
-  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const stagingPath = `_incoming/${assetType}-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}-${safeName}`;
+  const ext = ASSET_EXTENSION[assetType];
+  const path = `_branding/${assetType}-${Date.now()}.${ext}`;
 
-  const { data, error } = await supabase.storage.from('site-assets').createSignedUploadUrl(stagingPath);
+  const { data, error } = await supabase.storage.from('site-assets').createSignedUploadUrl(path);
 
   if (error || !data) {
     throw new Error(`Couldn't prepare upload: ${error?.message ?? 'unknown error'}`);
   }
 
-  return { path: data.path, token: data.token };
-}
-
-// Step 2 — called right after the browser finishes uploading the raw
-// file to the staging path above. The payload here is just a path
-// string, so it's tiny regardless of how large the original photo
-// was — this is where the actual resize/re-encode happens.
-export async function processBrandingUpload(
-  stagingPath: string,
-  assetType: AssetType
-): Promise<{ url?: string; error?: string }> {
-  const supabase = createAdminClient();
-
-  const { data: rawFile, error: downloadError } = await supabase.storage
-    .from('site-assets')
-    .download(stagingPath);
-
-  if (downloadError || !rawFile) {
-    return { error: `Couldn't read uploaded file: ${downloadError?.message ?? 'unknown error'}` };
-  }
-
-  let resized: Buffer;
-  try {
-    const buffer = Buffer.from(await rawFile.arrayBuffer());
-    resized = await sharp(buffer)
-      .rotate()
-      .resize({
-        width: MAX_DIMENSIONS[assetType],
-        height: MAX_DIMENSIONS[assetType],
-        fit: 'inside',
-        withoutEnlargement: true,
-      })
-      .png()
-      .toBuffer();
-  } catch (err) {
-    await supabase.storage.from('site-assets').remove([stagingPath]);
-    return { error: `Couldn't process image: ${err instanceof Error ? err.message : 'unknown error'}` };
-  }
-
-  const finalPath = `_branding/${assetType}-${Date.now()}.png`;
-
-  const { error: uploadError } = await supabase.storage
-    .from('site-assets')
-    .upload(finalPath, resized, { contentType: 'image/png', upsert: true });
-
-  await supabase.storage.from('site-assets').remove([stagingPath]);
-
-  if (uploadError) {
-    return { error: uploadError.message };
-  }
-
-  const { data } = supabase.storage.from('site-assets').getPublicUrl(finalPath);
-  return { url: data.publicUrl };
+  const { data: publicUrlData } = supabase.storage.from('site-assets').getPublicUrl(path);
+  return { path: data.path, token: data.token, url: publicUrlData.publicUrl };
 }
 
 // The main form submit. Image fields arrive as plain URL strings now

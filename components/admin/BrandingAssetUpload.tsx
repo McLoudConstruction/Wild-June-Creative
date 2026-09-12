@@ -2,17 +2,25 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { getSignedBrandingUploadUrl, processBrandingUpload } from '@/lib/admin/settings-actions';
+import { getSignedBrandingUploadUrl } from '@/lib/admin/settings-actions';
+import { compressImageFile } from '@/lib/site/image-compress';
 
 type AssetType = 'logo' | 'favicon' | 'header';
 
-// Drives one image field on the Branding form. The file goes browser
-// → Supabase Storage directly (never through a Vercel function, so
-// there's no 4.5MB platform limit to hit), then a server action
-// resizes/finalizes it and hands back a public URL. That URL sits in
-// a hidden field with `name` so it rides along with the rest of the
-// form's normal text submission — the <form>'s own action never
-// touches image bytes at all.
+const MAX_DIMENSIONS: Record<AssetType, number> = {
+  logo: 600,
+  favicon: 256,
+  header: 2400,
+};
+
+// Drives one image field on the Branding form. The browser resizes
+// the file itself (see lib/site/image-compress.ts) and uploads
+// straight to its final Storage location — never through a Vercel
+// function, so there's no 4.5MB platform limit to hit, and no
+// server-side download/resize/re-upload round trip to wait on either.
+// The resulting URL sits in a hidden field with `name` so it rides
+// along with the rest of the form's normal text submission — the
+// <form>'s own action never touches image bytes at all.
 export function BrandingAssetUpload({
   name,
   assetType,
@@ -40,24 +48,23 @@ export function BrandingAssetUpload({
     setError(null);
 
     try {
-      const { path, token } = await getSignedBrandingUploadUrl(assetType, file.name);
+      const compressed = await compressImageFile(file, {
+        maxDimension: MAX_DIMENSIONS[assetType],
+        mimeType: assetType === 'header' ? 'image/jpeg' : 'image/png',
+      });
+
+      const { path, token, url: finalUrl } = await getSignedBrandingUploadUrl(assetType, file.name);
 
       const supabase = createClient();
       const { error: uploadError } = await supabase.storage
         .from('site-assets')
-        .uploadToSignedUrl(path, token, file);
+        .uploadToSignedUrl(path, token, compressed);
 
       if (uploadError) {
         throw new Error(uploadError.message);
       }
 
-      const result = await processBrandingUpload(path, assetType);
-
-      if (result.error || !result.url) {
-        throw new Error(result.error ?? 'Upload failed');
-      }
-
-      setUrl(result.url);
+      setUrl(finalUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { compressImageFile } from '@/lib/site/image-compress';
 import {
   getSignedMediaUploadUrl,
-  processMediaUpload,
   listMediaLibrary,
   listGalleriesForPicker,
   listGalleryPhotosForPicker,
@@ -72,22 +72,18 @@ export function MediaPickerModal({
     setUploadError(null);
 
     try {
-      const { path, token } = await getSignedMediaUploadUrl(file.name);
+      const compressed = await compressImageFile(file, { maxDimension: 2000, quality: 0.85 });
+      const { path, token, url } = await getSignedMediaUploadUrl(file.name);
       const supabase = createClient();
       const { error: uploadErr } = await supabase.storage
         .from('media-library')
-        .uploadToSignedUrl(path, token, file);
+        .uploadToSignedUrl(path, token, compressed);
 
       if (uploadErr) {
         throw new Error(uploadErr.message);
       }
 
-      const result = await processMediaUpload(path, file.name);
-      if (result.error || !result.url) {
-        throw new Error(result.error ?? 'Upload failed');
-      }
-
-      onSelect(result.url);
+      onSelect(url);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
