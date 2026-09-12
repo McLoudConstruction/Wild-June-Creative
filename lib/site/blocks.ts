@@ -5,7 +5,26 @@
 // defaultPropsFor below, add a renderer component in
 // components/site/blocks/, and wire it into BlockRenderer.tsx.
 
-export type HeroBlockProps = {
+// Shared by every block that renders its own heading/body text
+// (everything except featured_photo). Lets Isabelle put a color or
+// image behind a section and, since that can turn a dark-ink-on-cream
+// section into something dark-on-dark, flip the text itself to a
+// light palette to match — the "light/dark toggle" is textTheme.
+export type SectionAppearance = {
+  background: 'none' | 'color' | 'image';
+  backgroundColor: string;
+  backgroundImage: string;
+  textTheme: 'dark' | 'light';
+};
+
+const DEFAULT_APPEARANCE: SectionAppearance = {
+  background: 'none',
+  backgroundColor: '#f2f2f2',
+  backgroundImage: '',
+  textTheme: 'dark',
+};
+
+export type HeroBlockProps = SectionAppearance & {
   heading: string;
   script: string;
   body: string;
@@ -22,7 +41,7 @@ export type FeaturedPhotoBlockProps = {
   label: string;
 };
 
-export type SessionsBlockProps = {
+export type SessionsBlockProps = SectionAppearance & {
   heading: string;
   body: string;
 };
@@ -32,13 +51,13 @@ export type PortfolioItem = {
   aspectRatio: string;
 };
 
-export type PortfolioGridBlockProps = {
+export type PortfolioGridBlockProps = SectionAppearance & {
   heading: string;
   body: string;
   items: PortfolioItem[];
 };
 
-export type AboutBlockProps = {
+export type AboutBlockProps = SectionAppearance & {
   heading: string;
   body: string;
   imageSrc: string;
@@ -79,6 +98,7 @@ export const BLOCK_ORDER: BlockType[] = [
 
 const BLOCK_DEFAULTS: { [K in BlockType]: BlockPropsMap[K] } = {
   hero: {
+    ...DEFAULT_APPEARANCE,
     heading: 'A new heading',
     script: 'a little script line',
     body: 'Add a sentence or two describing this section.',
@@ -94,10 +114,14 @@ const BLOCK_DEFAULTS: { [K in BlockType]: BlockPropsMap[K] } = {
     label: 'Add a photo here',
   },
   sessions: {
+    ...DEFAULT_APPEARANCE,
+    background: 'color',
+    backgroundColor: '#f2f2f2',
     heading: 'Sessions',
     body: 'A few starting points.',
   },
   portfolio_grid: {
+    ...DEFAULT_APPEARANCE,
     heading: 'A few favorites',
     body: 'A small preview.',
     items: [
@@ -107,6 +131,7 @@ const BLOCK_DEFAULTS: { [K in BlockType]: BlockPropsMap[K] } = {
     ],
   },
   about: {
+    ...DEFAULT_APPEARANCE,
     heading: "Hi, I'm Isabelle",
     body: 'Add a bit about yourself here.',
     imageSrc: '',
