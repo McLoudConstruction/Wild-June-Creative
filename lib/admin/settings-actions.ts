@@ -51,9 +51,11 @@ async function uploadBrandingAsset(
 export async function updateBrandingAction(formData: FormData) {
   const supabase = createAdminClient();
 
+  const headerStyle = formData.get('headerStyle') as string;
+
   const updatePayload: Record<string, unknown> = {
     id: true,
-    header_style: formData.get('headerStyle') as string,
+    header_style: headerStyle,
     header_overlay_theme: formData.get('headerOverlayTheme') as string,
     accent_color: formData.get('accentColor') as string,
     ink_color: formData.get('inkColor') as string,
@@ -94,6 +96,28 @@ export async function updateBrandingAction(formData: FormData) {
       redirect(`/admin/settings/branding?error=${encodeURIComponent(result.error)}`);
     }
     updatePayload.header_image_url = result.url;
+  }
+
+  // A file <input> can't remember a previously chosen file across a
+  // page reload — so if this save switches to the image header style
+  // without a new file attached this time, the only way that's valid
+  // is if an image is already saved from an earlier submit. Otherwise
+  // it'd silently save a style with nothing to show, and the header
+  // would just look unchanged with no indication why.
+  if (headerStyle === 'image' && !updatePayload.header_image_url) {
+    const { data: current } = await supabase
+      .from('site_settings')
+      .select('header_image_url')
+      .eq('id', true)
+      .maybeSingle();
+
+    if (!current?.header_image_url) {
+      redirect(
+        `/admin/settings/branding?error=${encodeURIComponent(
+          "Choose a header background image before saving — the file picker doesn't keep your last selection after a page reload, so it needs to be selected again."
+        )}`
+      );
+    }
   }
 
   const { error } = await supabase.from('site_settings').upsert(updatePayload);
