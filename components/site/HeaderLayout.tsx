@@ -61,14 +61,12 @@ export function HeaderLayout({
     const rightLinks = navLinks.slice(half);
 
     return (
-      <div
-        className="container header-center-grid"
-        style={{ width: '100%' }}
-      >
+      <div className="container header-center-grid" style={{ width: '100%', position: 'relative' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{renderLinkList(leftLinks)}</div>
         <div style={{ display: 'flex', justifyContent: 'center' }}>{logo}</div>
-        <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: '2.5rem' }}>
-          {renderLinkList(rightLinks, trailingItems)}
+        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>{renderLinkList(rightLinks)}</div>
+        <div className="header-center-utility">
+          <ul className="nav-list">{trailingItems}</ul>
           {social}
         </div>
       </div>

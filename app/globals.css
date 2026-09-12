@@ -87,11 +87,26 @@ img {
   padding: 26px 0;
 }
 
+.header-center-utility {
+  position: absolute;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
 @media (max-width: 720px) {
   .header-center-grid {
     grid-template-columns: 1fr;
     justify-items: center;
     row-gap: 16px;
+  }
+  .header-center-utility {
+    position: static;
+    transform: none;
+    justify-content: center;
   }
 }
 
@@ -116,6 +131,13 @@ img {
 .about-grid {
   display: grid;
   grid-template-columns: 0.8fr 1.2fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.photo-text-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 56px;
   align-items: center;
 }
@@ -167,6 +189,16 @@ img {
   }
   .about-grid > img,
   .about-grid > div:first-child {
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .photo-text-grid {
+    grid-template-columns: 1fr;
+  }
+  .photo-text-grid > div {
+    order: initial !important;
+  }
+  .photo-text-grid > div:first-child {
     max-width: 320px;
     margin: 0 auto;
   }

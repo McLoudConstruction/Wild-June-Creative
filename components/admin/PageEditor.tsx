@@ -80,6 +80,19 @@ const FIELD_SCHEMAS: Record<string, FieldDescriptor[]> = {
     { key: 'buttonLabel', label: 'Button text', kind: 'text' },
     { key: 'buttonHref', label: 'Button link', kind: 'text' },
   ],
+  photo_text: [
+    { key: 'eyebrow', label: 'Label (small text above the heading)', kind: 'text' },
+    { key: 'heading', label: 'Heading', kind: 'text' },
+    { key: 'body', label: 'Body text', kind: 'textarea' },
+    {
+      key: 'imageSrc',
+      label: 'Photo URL',
+      kind: 'text',
+      helper: 'Paste an image URL. Leave blank to show a placeholder.',
+    },
+    { key: 'buttonLabel', label: 'Button text (optional)', kind: 'text' },
+    { key: 'buttonHref', label: 'Button link', kind: 'text' },
+  ],
 };
 
 function SortableBlockRow({
@@ -409,6 +422,28 @@ export function PageEditor({
                 </div>
               );
             })}
+
+            {selectedBlock.type === 'photo_text' && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>Photo side</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => updateSelectedProp('imagePosition', 'left')}
+                    className={`admin-theme-toggle${selectedBlock.props.imagePosition === 'left' ? ' active' : ''}`}
+                  >
+                    Photo left
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateSelectedProp('imagePosition', 'right')}
+                    className={`admin-theme-toggle${selectedBlock.props.imagePosition === 'right' ? ' active' : ''}`}
+                  >
+                    Photo right
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

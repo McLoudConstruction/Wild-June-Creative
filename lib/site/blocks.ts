@@ -65,12 +65,27 @@ export type AboutBlockProps = SectionAppearance & {
   buttonHref: string;
 };
 
+// A generic photo-plus-text section — unlike About (which is fixed to
+// "about Isabelle" with a CTA button), this is meant for one-off
+// content: a team member, a pet, a single testimonial, etc. imagePosition
+// is the "flip it" toggle rather than two separate block types.
+export type PhotoTextBlockProps = SectionAppearance & {
+  eyebrow: string;
+  heading: string;
+  body: string;
+  imageSrc: string;
+  imagePosition: 'left' | 'right';
+  buttonLabel: string;
+  buttonHref: string;
+};
+
 export type BlockPropsMap = {
   hero: HeroBlockProps;
   featured_photo: FeaturedPhotoBlockProps;
   sessions: SessionsBlockProps;
   portfolio_grid: PortfolioGridBlockProps;
   about: AboutBlockProps;
+  photo_text: PhotoTextBlockProps;
 };
 
 export type BlockType = keyof BlockPropsMap;
@@ -85,6 +100,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   sessions: 'Sessions',
   portfolio_grid: 'Portfolio grid',
   about: 'About',
+  photo_text: 'Photo + text',
 };
 
 // Order blocks are offered in the "Add block" picker.
@@ -94,6 +110,7 @@ export const BLOCK_ORDER: BlockType[] = [
   'sessions',
   'portfolio_grid',
   'about',
+  'photo_text',
 ];
 
 const BLOCK_DEFAULTS: { [K in BlockType]: BlockPropsMap[K] } = {
@@ -137,6 +154,16 @@ const BLOCK_DEFAULTS: { [K in BlockType]: BlockPropsMap[K] } = {
     imageSrc: '',
     buttonLabel: "Let's work together",
     buttonHref: '/book',
+  },
+  photo_text: {
+    ...DEFAULT_APPEARANCE,
+    eyebrow: 'Label',
+    heading: 'A new heading',
+    body: 'Add a sentence or two here.',
+    imageSrc: '',
+    imagePosition: 'left',
+    buttonLabel: '',
+    buttonHref: '',
   },
 };
 

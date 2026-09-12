@@ -4,6 +4,7 @@ import { FeaturedPhoto } from './FeaturedPhoto';
 import { Sessions, type SessionPackage } from './Sessions';
 import { PortfolioGrid } from './PortfolioGrid';
 import { About } from './About';
+import { PhotoText } from './PhotoText';
 
 // Split out from BlockRenderer so the admin editor's canvas can wrap
 // each block in its own selectable container instead of getting back
@@ -20,6 +21,8 @@ export function renderBlock(block: Block, packages: SessionPackage[]) {
       return <PortfolioGrid key={block.id} {...block.props} />;
     case 'about':
       return <About key={block.id} {...block.props} />;
+    case 'photo_text':
+      return <PhotoText key={block.id} {...block.props} />;
     default:
       return null;
   }
