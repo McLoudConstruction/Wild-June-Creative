@@ -37,6 +37,10 @@ values (
       "id": "hero-1",
       "type": "hero",
       "props": {
+        "background": "none",
+        "backgroundColor": "#f2f2f2",
+        "backgroundImage": "",
+        "textTheme": "dark",
         "heading": "The kind of photos you''ll actually put on the wall.",
         "script": "gently, honestly, in wildflower light",
         "body": "Family sessions, portraits, and small business photography around the Kansas City area. Unhurried, true to how you actually look and live, delivered in a private gallery you''ll want to revisit.",
@@ -60,6 +64,10 @@ values (
       "id": "sessions-1",
       "type": "sessions",
       "props": {
+        "background": "color",
+        "backgroundColor": "#f2f2f2",
+        "backgroundImage": "",
+        "textTheme": "dark",
         "heading": "Sessions",
         "body": "A few starting points. Every session includes a private online gallery, with the option to pay in full or in installments."
       }
@@ -68,6 +76,10 @@ values (
       "id": "portfolio-1",
       "type": "portfolio_grid",
       "props": {
+        "background": "none",
+        "backgroundColor": "#f2f2f2",
+        "backgroundImage": "",
+        "textTheme": "dark",
         "heading": "A few favorites",
         "body": "A small preview — the full portfolio is coming soon.",
         "items": [
@@ -84,6 +96,10 @@ values (
       "id": "about-1",
       "type": "about",
       "props": {
+        "background": "none",
+        "backgroundColor": "#f2f2f2",
+        "backgroundImage": "",
+        "textTheme": "dark",
         "heading": "Hi, I''m Isabelle",
         "body": "I started Wild June Creative because I love the ordinary parts of a family''s life just as much as the milestones. Around the Kansas City area, I photograph people the way they actually are — unposed, unhurried, and a little wild around the edges.",
         "imageSrc": "",

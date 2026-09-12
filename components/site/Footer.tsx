@@ -2,8 +2,26 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { NAV_LINKS } from '@/lib/site/nav';
 import { SocialLinks } from './SocialLinks';
+import { getSiteSettings } from '@/lib/site/settings';
 
-export function Footer() {
+export async function Footer() {
+  const settings = await getSiteSettings();
+
+  const logo = settings.logo_url ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={settings.logo_url} alt="Wild June Creative" style={{ width: '76px', height: 'auto' }} />
+  ) : (
+    <Image
+      src="/brand/wjc-logo-square-white.png"
+      alt="Wild June Creative"
+      width={300}
+      height={300}
+      style={{ width: '76px', height: 'auto' }}
+    />
+  );
+
+  const hasContactInfo = settings.contact_phone || settings.contact_email || settings.contact_address;
+
   return (
     <footer style={{ background: 'var(--ink)', padding: '64px 32px 32px' }}>
       <div
@@ -16,13 +34,7 @@ export function Footer() {
           textAlign: 'center',
         }}
       >
-        <Image
-          src="/brand/wjc-logo-square-white.png"
-          alt="Wild June Creative"
-          width={300}
-          height={300}
-          style={{ width: '76px', height: 'auto' }}
-        />
+        {logo}
 
         <div>
           <h2 style={{ fontSize: '1.4rem', color: 'var(--cream)', marginBottom: 8 }}>
@@ -33,7 +45,13 @@ export function Footer() {
           </p>
         </div>
 
-        <SocialLinks color="var(--cream)" />
+        <SocialLinks
+          color="var(--cream)"
+          instagramUrl={settings.instagram_url}
+          facebookUrl={settings.facebook_url}
+          pinterestUrl={settings.pinterest_url}
+          tiktokUrl={settings.tiktok_url}
+        />
 
         <nav>
           <ul
@@ -65,6 +83,14 @@ export function Footer() {
             ))}
           </ul>
         </nav>
+
+        {hasContactInfo && (
+          <p style={{ fontSize: 13, color: 'var(--taupe)', margin: 0 }}>
+            {[settings.contact_phone, settings.contact_email, settings.contact_address]
+              .filter(Boolean)
+              .join('  ·  ')}
+          </p>
+        )}
 
         <p style={{ fontSize: 12, color: 'var(--warm-gray)', margin: 0 }}>
           © {new Date().getFullYear()} Wild June Creative. Personal &amp; business photography in
