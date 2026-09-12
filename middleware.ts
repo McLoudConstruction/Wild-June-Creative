@@ -5,24 +5,36 @@ import { NextResponse, type NextRequest } from 'next/server';
 // client's login doesn't silently expire mid-visit, and gives us one
 // place to redirect unauthenticated visitors away from /portal.
 export async function middleware(request: NextRequest) {
-  // /admin routes use simple Basic Auth rather than Supabase auth,
-  // since this is a single-operator internal tool for now (creating
-  // clients, sending invites) — not something that needs a full user
-  // system yet. Set ADMIN_USERNAME and ADMIN_PASSWORD in Vercel's env
-  // vars. Swap this for real admin accounts once more than one person
-  // needs access or an audit trail matters.
+  // /admin routes use simple Basic Auth rather than Supabase auth —
+  // no signup flow, no password reset, just a fixed list of
+  // username/password pairs set in Vercel's env vars. Each pair is
+  // one person's login: ADMIN_USERNAME/ADMIN_PASSWORD for the first,
+  // ADMIN_USERNAME_2/ADMIN_PASSWORD_2 for a second person, and so on
+  // if a third is ever needed (add the pair here and the matching env
+  // vars in Vercel). There's still no audit trail — every admin
+  // shares the same access — but whichever pair matched is forwarded
+  // as the x-admin-user request header below, so a future audit log
+  // has something to key off of without redoing this.
+  let matchedAdminUser: string | undefined;
+
   if (request.nextUrl.pathname.startsWith('/admin')) {
     const authHeader = request.headers.get('authorization');
-    const expectedUser = process.env.ADMIN_USERNAME;
-    const expectedPass = process.env.ADMIN_PASSWORD;
 
-    const isAuthorized =
-      authHeader &&
-      expectedUser &&
-      expectedPass &&
-      authHeader === `Basic ${Buffer.from(`${expectedUser}:${expectedPass}`).toString('base64')}`;
+    const credentialPairs: { user?: string; pass?: string }[] = [
+      { user: process.env.ADMIN_USERNAME, pass: process.env.ADMIN_PASSWORD },
+      { user: process.env.ADMIN_USERNAME_2, pass: process.env.ADMIN_PASSWORD_2 },
+    ];
 
-    if (!isAuthorized) {
+    matchedAdminUser = authHeader
+      ? credentialPairs.find(
+          ({ user, pass }) =>
+            user &&
+            pass &&
+            authHeader === `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`
+        )?.user
+      : undefined;
+
+    if (!matchedAdminUser) {
       return new NextResponse('Authentication required', {
         status: 401,
         headers: { 'WWW-Authenticate': 'Basic realm="Admin"' },
@@ -30,7 +42,12 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  let response = NextResponse.next({ request });
+  const requestHeaders = new Headers(request.headers);
+  if (matchedAdminUser) {
+    requestHeaders.set('x-admin-user', matchedAdminUser);
+  }
+
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -42,7 +59,7 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          response = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
