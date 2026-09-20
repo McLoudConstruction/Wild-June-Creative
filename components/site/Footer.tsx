@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { NAV_LINKS } from '@/lib/site/nav';
 import { SocialLinks } from './SocialLinks';
 import { getSiteSettings } from '@/lib/site/settings';
 
@@ -65,7 +64,7 @@ export async function Footer() {
               padding: 0,
             }}
           >
-            {NAV_LINKS.map((link) => (
+            {settings.nav_links.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}

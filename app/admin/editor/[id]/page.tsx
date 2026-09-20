@@ -36,6 +36,7 @@ export default async function EditorPage({ params }: { params: { id: string } })
       pageId={page.id}
       slug={page.slug}
       title={page.title}
+      published={page.published}
       initialBlocks={(page.blocks as Block[] | null) ?? []}
       packages={(packages as SessionPackage[] | null) ?? []}
       siteSettings={siteSettings}

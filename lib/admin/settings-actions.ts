@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
+import type { NavLink } from '@/lib/site/nav';
 
 type AssetType = 'logo' | 'favicon' | 'header';
 
@@ -56,6 +57,27 @@ export async function updateLogoPosition(
     .upsert({ id: true, logo_position: position, updated_at: new Date().toISOString() });
 
   return { error: error?.message ?? null };
+}
+
+// The nav editor on /admin/pages calls this directly (not a <form
+// action>, since it's sending a JSON array rather than FormData).
+// Blank rows (no label or no href — e.g. one added and left empty)
+// are dropped rather than saved, so a stray "Add link" click can't
+// leave a dead entry in the live header.
+export async function updateNavLinks(
+  navLinks: NavLink[]
+): Promise<{ error: string | null; navLinks: NavLink[] }> {
+  const supabase = createAdminClient();
+
+  const cleaned = navLinks
+    .map((link) => ({ label: link.label.trim(), href: link.href.trim() }))
+    .filter((link) => link.label && link.href);
+
+  const { error } = await supabase
+    .from('site_settings')
+    .upsert({ id: true, nav_links: cleaned, updated_at: new Date().toISOString() });
+
+  return { error: error?.message ?? null, navLinks: cleaned };
 }
 
 export async function updateBrandingAction(formData: FormData) {

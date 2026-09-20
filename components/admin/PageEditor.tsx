@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2, Plus } from 'lucide-react';
-import { updatePageBlocks } from '@/lib/admin/pages-actions';
+import { savePage } from '@/lib/admin/pages-actions';
 import { updateLogoPosition } from '@/lib/admin/settings-actions';
 import {
   BLOCK_LABELS,
@@ -145,8 +145,9 @@ function SortableBlockRow({
 
 export function PageEditor({
   pageId,
-  slug,
-  title,
+  slug: initialSlug,
+  title: initialTitle,
+  published: initialPublished,
   initialBlocks,
   packages,
   siteSettings,
@@ -154,6 +155,7 @@ export function PageEditor({
   pageId: string;
   slug: string;
   title: string;
+  published: boolean;
   initialBlocks: Block[];
   packages: SessionPackage[];
   siteSettings: SiteSettings;
@@ -163,6 +165,16 @@ export function PageEditor({
   const [isPickerOpen, setPickerOpen] = useState(false);
   const [isSaving, startSaving] = useTransition();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // `title`/`slugInput`/`published` are the editable form fields.
+  // `savedSlug` tracks what's actually persisted (and thus which live
+  // URL to link to and which path to have savePage revalidate) — it
+  // only moves once a save succeeds, so a half-typed slug change
+  // never breaks the "View live page" link.
+  const [title, setTitle] = useState(initialTitle);
+  const [slugInput, setSlugInput] = useState(initialSlug);
+  const [savedSlug, setSavedSlug] = useState(initialSlug);
+  const [published, setPublished] = useState(initialPublished);
 
   const [logoPosition, setLogoPosition] = useState(siteSettings.logo_position);
   const [isSavingLogoPosition, startSavingLogoPosition] = useTransition();
@@ -254,8 +266,14 @@ export function PageEditor({
   function handleSave() {
     setSaveMessage(null);
     startSaving(async () => {
-      const result = await updatePageBlocks(pageId, slug, blocks);
-      setSaveMessage(result.error ? `Couldn't save: ${result.error}` : 'Saved');
+      const result = await savePage(pageId, savedSlug, { title, slug: slugInput, published, blocks });
+      if (result.error) {
+        setSaveMessage(`Couldn't save: ${result.error}`);
+      } else {
+        setSavedSlug(result.slug);
+        setSlugInput(result.slug);
+        setSaveMessage('Saved');
+      }
     });
   }
 
@@ -267,10 +285,44 @@ export function PageEditor({
           <Link href="/admin/pages" className="editor-exit-link">
             ← Exit editor
           </Link>
-          <h2 style={{ fontSize: 16, margin: 0 }}>{title}</h2>
-          <p style={{ fontSize: 12, color: 'var(--warm-gray)', margin: '2px 0 0' }}>
-            /{slug === 'home' ? '' : slug}
-          </p>
+
+          <div style={{ marginTop: 12 }}>
+            <label htmlFor="page-title" style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--warm-gray)', marginBottom: 4 }}>
+              Page title
+            </label>
+            <input
+              id="page-title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={{ width: '100%', padding: 6, fontSize: 15, fontWeight: 600 }}
+            />
+          </div>
+
+          {savedSlug === 'home' ? (
+            <p style={{ fontSize: 12, color: 'var(--warm-gray)', margin: '10px 0 0' }}>/ (homepage)</p>
+          ) : (
+            <div style={{ marginTop: 10 }}>
+              <label htmlFor="page-slug" style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--warm-gray)', marginBottom: 4 }}>
+                Page address
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 13, color: 'var(--warm-gray)' }}>/</span>
+                <input
+                  id="page-slug"
+                  type="text"
+                  value={slugInput}
+                  onChange={(e) => setSlugInput(e.target.value)}
+                  style={{ flex: 1, padding: 6, fontSize: 13 }}
+                />
+              </div>
+            </div>
+          )}
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 13 }}>
+            <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
+            Published
+          </label>
         </div>
 
         <div className="editor-sidebar-section">
@@ -338,7 +390,7 @@ export function PageEditor({
       <main className="editor-canvas">
         <div className="editor-canvas-topbar">
           <a
-            href={`/${slug === 'home' ? '' : slug}`}
+            href={`/${savedSlug === 'home' ? '' : savedSlug}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{ fontSize: 13, color: 'var(--warm-gray)' }}
@@ -361,7 +413,11 @@ export function PageEditor({
 
         <div className="editor-canvas-scroll">
           <div onClickCapture={(e) => e.preventDefault()}>
-            <HeaderPreviewClient settings={siteSettings} logoPosition={logoPosition} />
+            <HeaderPreviewClient
+              settings={siteSettings}
+              logoPosition={logoPosition}
+              navLinks={siteSettings.nav_links}
+            />
           </div>
           {blocks.length === 0 && (
             <p style={{ padding: 80, textAlign: 'center', color: 'var(--warm-gray)' }}>

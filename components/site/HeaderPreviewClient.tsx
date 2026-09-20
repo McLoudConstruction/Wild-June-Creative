@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { NAV_LINKS } from '@/lib/site/nav';
 import { HeaderLayout } from './HeaderLayout';
 import { SocialLinks } from './SocialLinks';
 import type { SiteSettings } from '@/lib/site/settings';
+import type { NavLink } from '@/lib/site/nav';
 
 // Mirrors Header.tsx's rendering, minus the real auth check (a design
 // preview doesn't need to know if a real visitor is logged in — it
@@ -15,9 +15,11 @@ import type { SiteSettings } from '@/lib/site/settings';
 export function HeaderPreviewClient({
   settings,
   logoPosition,
+  navLinks,
 }: {
   settings: SiteSettings;
   logoPosition: 'left' | 'center' | 'right';
+  navLinks: NavLink[];
 }) {
   const isImageHeader = settings.header_style === 'image' && Boolean(settings.header_image_url);
   const navTextColor = isImageHeader
@@ -75,7 +77,7 @@ export function HeaderPreviewClient({
       <HeaderLayout
         logoPosition={logoPosition}
         logo={logo}
-        navLinks={NAV_LINKS}
+        navLinks={navLinks}
         navTextColor={navTextColor}
         trailingItems={trailingItems}
         social={

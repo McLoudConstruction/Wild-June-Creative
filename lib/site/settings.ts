@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
+import { DEFAULT_NAV_LINKS, type NavLink } from '@/lib/site/nav';
 
 export type HeadingFont = 'playfair' | 'cormorant' | 'marcellus';
 export type BodyFont = 'jost' | 'karla' | 'lato';
@@ -22,6 +23,7 @@ export type SiteSettings = {
   contact_phone: string | null;
   contact_email: string | null;
   contact_address: string | null;
+  nav_links: NavLink[];
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -42,6 +44,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   contact_phone: null,
   contact_email: null,
   contact_address: null,
+  nav_links: DEFAULT_NAV_LINKS,
 };
 
 // A handful of pre-loaded pairings rather than an arbitrary font

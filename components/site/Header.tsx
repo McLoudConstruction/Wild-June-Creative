@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { LogOut } from 'lucide-react';
-import { NAV_LINKS } from '@/lib/site/nav';
 import { SocialLinks } from './SocialLinks';
 import { HeaderLayout } from './HeaderLayout';
 import { createClient } from '@/lib/supabase/server';
@@ -117,7 +116,7 @@ export async function Header() {
       <HeaderLayout
         logoPosition={settings.logo_position}
         logo={logo}
-        navLinks={NAV_LINKS}
+        navLinks={settings.nav_links}
         navTextColor={navTextColor}
         trailingItems={trailingItems}
         social={
