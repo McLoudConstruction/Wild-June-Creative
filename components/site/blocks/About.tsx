@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { PlaceholderPhoto } from '@/components/site/PlaceholderPhoto';
 import type { AboutBlockProps } from '@/lib/site/blocks';
-import { sectionBackgroundStyle, sectionTextColors } from './appearance';
+import { fontSizeStyle, sectionBackgroundStyle, sectionTextColors } from './appearance';
 
 export function About(props: AboutBlockProps) {
   const { heading, body, imageSrc, buttonLabel, buttonHref } = props;
@@ -17,12 +17,12 @@ export function About(props: AboutBlockProps) {
           src={imageSrc || undefined}
         />
         <div>
-          <h2 style={{ fontSize: '2rem', marginBottom: 20, color: colors.heading }}>{heading}</h2>
+          <h2 style={{ fontSize: '2rem', marginBottom: 20, color: colors.heading, ...fontSizeStyle(props, 'heading') }}>{heading}</h2>
           {body && (
-            <p style={{ color: colors.body, fontSize: 17, maxWidth: 480, marginBottom: 16 }}>{body}</p>
+            <p style={{ color: colors.body, fontSize: 17, maxWidth: 480, marginBottom: 16, ...fontSizeStyle(props, 'body') }}>{body}</p>
           )}
           {buttonLabel && (
-            <Link href={buttonHref || '#'} className="btn-secondary" style={{ color: colors.heading, borderBottomColor: colors.heading }}>
+            <Link href={buttonHref || '#'} className="btn-secondary" style={{ color: colors.heading, borderBottomColor: colors.heading, ...fontSizeStyle(props, 'button') }}>
               {buttonLabel}
             </Link>
           )}

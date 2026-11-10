@@ -23,6 +23,9 @@ import { updateLogoPosition } from '@/lib/admin/settings-actions';
 import {
   BLOCK_LABELS,
   BLOCK_ORDER,
+  MAX_FONT_SIZE,
+  MIN_FONT_SIZE,
+  TEXT_SIZE_FIELDS,
   defaultPropsFor,
   newBlockId,
   type Block,
@@ -95,6 +98,44 @@ const FIELD_SCHEMAS: Record<string, FieldDescriptor[]> = {
     { key: 'buttonHref', label: 'Button link', kind: 'text' },
   ],
 };
+
+// Number field for a font size. Keeps what's being typed in local
+// state and only commits (clamped) on blur/Enter, so typing "48" isn't
+// cut short by the minimum kicking in after the "4".
+function FontSizeNumberInput({
+  id,
+  value,
+  onCommit,
+}: {
+  id: string;
+  value: number;
+  onCommit: (size: number) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  function commit() {
+    if (draft !== null && draft.trim() !== '' && Number.isFinite(Number(draft))) {
+      onCommit(Number(draft));
+    }
+    setDraft(null);
+  }
+
+  return (
+    <input
+      id={id}
+      type="number"
+      min={MIN_FONT_SIZE}
+      max={MAX_FONT_SIZE}
+      value={draft ?? value}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit();
+      }}
+      style={{ width: 56, padding: 6 }}
+    />
+  );
+}
 
 function SortableBlockRow({
   block,
@@ -222,6 +263,26 @@ export function PageEditor({
     const id = selectedBlock.id;
     setBlocks((current) =>
       current.map((b) => (b.id === id ? ({ ...b, props: { ...b.props, [key]: value } } as Block) : b))
+    );
+  }
+
+  // Sets (or, with null, clears) one text element's font-size override
+  // in the selected block's props.fontSizes. Clearing deletes the key
+  // so the block falls back to its built-in size.
+  function updateSelectedFontSize(key: string, size: number | null) {
+    if (!selectedBlock || selectedBlock.type === 'featured_photo') return;
+    const id = selectedBlock.id;
+    setBlocks((current) =>
+      current.map((b) => {
+        if (b.id !== id || b.type === 'featured_photo') return b;
+        const next = { ...(b.props.fontSizes ?? {}) };
+        if (size === null) {
+          delete next[key];
+        } else {
+          next[key] = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
+        }
+        return { ...b, props: { ...b.props, fontSizes: next } } as Block;
+      })
     );
   }
 
@@ -584,6 +645,56 @@ export function PageEditor({
             <button type="button" onClick={addPortfolioItem} className="admin-add-block-button">
               <Plus size={15} /> Add photo
             </button>
+          </div>
+        )}
+
+        {selectedAppearance && selectedBlock && TEXT_SIZE_FIELDS[selectedBlock.type] && (
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(64,56,46,0.12)' }}>
+            <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Text sizes</p>
+            <p style={{ fontSize: 12, color: 'var(--warm-gray)', marginBottom: 14 }}>
+              Size in pixels. Large text shrinks automatically on phones.
+            </p>
+            {TEXT_SIZE_FIELDS[selectedBlock.type]!.map((field) => {
+              const override = selectedAppearance.fontSizes?.[field.key];
+              const current = typeof override === 'number' ? override : field.defaultSize;
+              return (
+                <div key={field.key} style={{ marginBottom: 14 }}>
+                  <label
+                    htmlFor={`font-size-${field.key}`}
+                    style={{ display: 'block', fontSize: 13, marginBottom: 6 }}
+                  >
+                    {field.label}
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="range"
+                      min={MIN_FONT_SIZE}
+                      max={MAX_FONT_SIZE}
+                      step={1}
+                      value={current}
+                      onChange={(e) => updateSelectedFontSize(field.key, Number(e.target.value))}
+                      aria-label={`${field.label} font size`}
+                      style={{ flex: 1, minWidth: 0 }}
+                    />
+                    <FontSizeNumberInput
+                      id={`font-size-${field.key}`}
+                      value={current}
+                      onCommit={(size) => updateSelectedFontSize(field.key, size)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateSelectedFontSize(field.key, null)}
+                      disabled={typeof override !== 'number'}
+                      aria-label={`Reset ${field.label} font size`}
+                      title="Reset to default"
+                      style={{ padding: '6px 8px', fontSize: 12 }}
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 

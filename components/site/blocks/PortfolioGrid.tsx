@@ -1,6 +1,6 @@
 import { PlaceholderPhoto } from '@/components/site/PlaceholderPhoto';
 import type { PortfolioGridBlockProps } from '@/lib/site/blocks';
-import { sectionBackgroundStyle, sectionTextColors } from './appearance';
+import { fontSizeStyle, sectionBackgroundStyle, sectionTextColors } from './appearance';
 
 const GRADIENTS = [
   'linear-gradient(150deg, var(--blush), var(--cream))',
@@ -17,8 +17,8 @@ export function PortfolioGrid(props: PortfolioGridBlockProps) {
     <section style={{ padding: '90px 32px', ...sectionBackgroundStyle(props) }}>
       <div className="container">
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <h2 style={{ fontSize: '2rem', marginBottom: 10, color: colors.heading }}>{heading}</h2>
-          {body && <p style={{ color: colors.body, fontSize: 16 }}>{body}</p>}
+          <h2 style={{ fontSize: '2rem', marginBottom: 10, color: colors.heading, ...fontSizeStyle(props, 'heading') }}>{heading}</h2>
+          {body && <p style={{ color: colors.body, fontSize: 16, ...fontSizeStyle(props, 'body') }}>{body}</p>}
         </div>
         <div className="portfolio-grid">
           {items.map((item, i) => (

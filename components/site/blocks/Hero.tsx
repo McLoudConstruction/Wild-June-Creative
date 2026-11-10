@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { HeroBlockProps } from '@/lib/site/blocks';
-import { sectionBackgroundStyle, sectionTextColors } from './appearance';
+import { fontSizeStyle, sectionBackgroundStyle, sectionTextColors } from './appearance';
 
 export function Hero(props: HeroBlockProps) {
   const { heading, script, body, primaryLabel, primaryHref, secondaryLabel, secondaryHref } = props;
@@ -9,7 +9,7 @@ export function Hero(props: HeroBlockProps) {
   return (
     <section style={{ padding: '70px 32px 60px', textAlign: 'center', ...sectionBackgroundStyle(props) }}>
       <div className="container" style={{ maxWidth: 720, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 'clamp(2.3rem, 4vw, 3.4rem)', lineHeight: 1.15, color: colors.heading }}>
+        <h1 style={{ fontSize: 'clamp(2.3rem, 4vw, 3.4rem)', lineHeight: 1.15, color: colors.heading, ...fontSizeStyle(props, 'heading') }}>
           {heading}
         </h1>
         {script && (
@@ -19,12 +19,13 @@ export function Hero(props: HeroBlockProps) {
               fontSize: '2.1rem',
               color: 'var(--accent)',
               margin: '10px 0 0',
+              ...fontSizeStyle(props, 'script'),
             }}
           >
             {script}
           </p>
         )}
-        {body && <p style={{ marginTop: 22, color: colors.body, fontSize: 17 }}>{body}</p>}
+        {body && <p style={{ marginTop: 22, color: colors.body, fontSize: 17, ...fontSizeStyle(props, 'body') }}>{body}</p>}
         <div
           style={{
             marginTop: 32,
@@ -35,12 +36,12 @@ export function Hero(props: HeroBlockProps) {
           }}
         >
           {primaryLabel && (
-            <Link href={primaryHref || '#'} className="btn-primary">
+            <Link href={primaryHref || '#'} className="btn-primary" style={fontSizeStyle(props, 'primaryButton')}>
               {primaryLabel}
             </Link>
           )}
           {secondaryLabel && (
-            <Link href={secondaryHref || '#'} className="btn-secondary" style={{ color: colors.heading, borderBottomColor: colors.heading }}>
+            <Link href={secondaryHref || '#'} className="btn-secondary" style={{ color: colors.heading, borderBottomColor: colors.heading, ...fontSizeStyle(props, 'secondaryButton') }}>
               {secondaryLabel}
             </Link>
           )}

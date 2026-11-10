@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { PlaceholderPhoto } from '@/components/site/PlaceholderPhoto';
 import type { PhotoTextBlockProps } from '@/lib/site/blocks';
-import { sectionBackgroundStyle, sectionTextColors } from './appearance';
+import { fontSizeStyle, sectionBackgroundStyle, sectionTextColors } from './appearance';
 
 export function PhotoText(props: PhotoTextBlockProps) {
   const { eyebrow, heading, body, imageSrc, imagePosition, buttonLabel, buttonHref } = props;
@@ -31,20 +31,21 @@ export function PhotoText(props: PhotoTextBlockProps) {
                 textTransform: 'uppercase',
                 color: 'var(--accent)',
                 marginBottom: 10,
+                ...fontSizeStyle(props, 'eyebrow'),
               }}
             >
               {eyebrow}
             </p>
           )}
-          <h2 style={{ fontSize: '1.8rem', marginBottom: 16, color: colors.heading }}>{heading}</h2>
+          <h2 style={{ fontSize: '1.8rem', marginBottom: 16, color: colors.heading, ...fontSizeStyle(props, 'heading') }}>{heading}</h2>
           {body && (
-            <p style={{ color: colors.body, fontSize: 16, maxWidth: 460, marginBottom: 16 }}>{body}</p>
+            <p style={{ color: colors.body, fontSize: 16, maxWidth: 460, marginBottom: 16, ...fontSizeStyle(props, 'body') }}>{body}</p>
           )}
           {buttonLabel && (
             <Link
               href={buttonHref || '#'}
               className="btn-secondary"
-              style={{ color: colors.heading, borderBottomColor: colors.heading }}
+              style={{ color: colors.heading, borderBottomColor: colors.heading, ...fontSizeStyle(props, 'button') }}
             >
               {buttonLabel}
             </Link>
