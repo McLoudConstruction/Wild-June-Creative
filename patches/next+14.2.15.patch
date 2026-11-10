@@ -1,0 +1,13 @@
+diff --git a/node_modules/next/dist/compiled/@next/font/dist/google/loader.js b/node_modules/next/dist/compiled/@next/font/dist/google/loader.js
+index 3e5ee51..1d2ad29 100644
+--- a/node_modules/next/dist/compiled/@next/font/dist/google/loader.js
++++ b/node_modules/next/dist/compiled/@next/font/dist/google/loader.js
+@@ -109,7 +109,7 @@ const nextFontGoogleFontLoader = async ({ functionName, data, emitFontFile, isDe
+             if (fontFileBuffer == null) {
+                 (0, next_font_error_1.nextFontError)(`Failed to fetch \`${fontFamily}\` from Google Fonts.`);
+             }
+-            const ext = /\.(woff|woff2|eot|ttf|otf)$/.exec(googleFontFileUrl)[1];
++            const ext = (/\.(woff|woff2|eot|ttf|otf)$/.exec(googleFontFileUrl) || [null, 'woff2'])[1];
+             // Emit font file to .next/static/media
+             const selfHostedFileUrl = emitFontFile(fontFileBuffer, ext, preloadFontFile, !!adjustFontFallbackMetrics);
+             return {
