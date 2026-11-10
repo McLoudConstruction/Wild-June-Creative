@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 const TABS = [
   { href: '/admin/settings/branding', label: 'Branding' },
   { href: '/admin/settings/watermark', label: 'Watermark' },
+  { href: '/admin/settings/admins', label: 'Admins' },
 ];
 
 export function SettingsSubNav() {

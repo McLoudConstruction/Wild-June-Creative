@@ -1,0 +1,149 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+
+export const dynamic = 'force-dynamic';
+
+// Landing page for the emailed admin links — both "you've been added
+// as an admin" invites and forgot-password resets. Same mechanics as
+// /portal/set-password: Supabase issues these as implicit-flow links,
+// so the session tokens arrive as a URL fragment (#access_token=…)
+// that only exists in the browser and has to be read here on load,
+// then used to establish a session before the password can be set.
+export default function AdminSetPasswordPage() {
+  const router = useRouter();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [linkType, setLinkType] = useState<'invite' | 'recovery'>('invite');
+
+  useEffect(() => {
+    const hash = window.location.hash;
+
+    if (!hash || !hash.includes('access_token')) {
+      setSessionError(
+        'This link looks incomplete or has already been used. Request a fresh one and try again.'
+      );
+      return;
+    }
+
+    const params = new URLSearchParams(hash.substring(1));
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    if (params.get('type') === 'recovery') {
+      setLinkType('recovery');
+    }
+
+    if (!access_token || !refresh_token) {
+      setSessionError('This link is missing required information. Request a fresh one.');
+      return;
+    }
+
+    const supabase = createClient();
+    supabase.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
+      if (error) {
+        setSessionError(`This link has expired or already been used: ${error.message}`);
+        return;
+      }
+      // Clean the tokens out of the visible URL now that they're used.
+      window.history.replaceState(null, '', window.location.pathname);
+      setSessionReady(true);
+    });
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setLoading(true);
+    const supabase = createClient();
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    setLoading(false);
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    // Hard navigation so the middleware sees the new session cookie.
+    // If this login isn't actually an admin (a client's link, say),
+    // middleware sends them to the login form, which says so.
+    router.push('/admin');
+    router.refresh();
+  }
+
+  if (sessionError) {
+    return (
+      <div style={{ maxWidth: 400, margin: '48px auto', padding: '0 16px' }}>
+        <h1>Link problem</h1>
+        <p style={{ color: 'crimson' }}>{sessionError}</p>
+        <p style={{ fontSize: 14 }}>
+          <a href="/admin/forgot-password">Request a new link</a>
+        </p>
+      </div>
+    );
+  }
+
+  if (!sessionReady) {
+    return (
+      <div style={{ maxWidth: 400, margin: '48px auto', padding: '0 16px' }}>
+        <p>Setting things up…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 400, margin: '48px auto', padding: '0 16px' }}>
+      <h1>{linkType === 'recovery' ? 'Choose a new password' : 'Set up your admin login'}</h1>
+      <p>
+        {linkType === 'recovery'
+          ? 'Enter a new password for your admin account.'
+          : "Choose a password you'll use to log into the Wild June Creative admin."}
+      </p>
+      <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: 12 }}>
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={{ width: '100%', padding: 8 }}
+          />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label htmlFor="confirmPassword">Confirm password</label>
+          <input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            style={{ width: '100%', padding: 8 }}
+          />
+        </div>
+        {error && <p style={{ color: 'crimson' }}>{error}</p>}
+        <button type="submit" disabled={loading} className="btn-primary" style={{ border: 'none', cursor: 'pointer' }}>
+          {loading ? 'Saving…' : linkType === 'recovery' ? 'Save new password' : 'Set password & continue'}
+        </button>
+      </form>
+    </div>
+  );
+}
